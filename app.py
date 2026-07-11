@@ -180,7 +180,7 @@ for registro in st.session_state["historico_global"]:
 
 ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
 
-# CORREÇÃO DEFINITIVA DO CÁLCULO DE GRÁFICOS: Pega o maior valor numérico com segurança
+# Coleta os valores numéricos com segurança para calibrar o gráfico
 valores_viagens = [qtd for nome, qtd in ranking_ordenado]
 maior_viagem = max(valores_viagens) if valores_viagens and max(valores_viagens) > 0 else 1
 
@@ -257,9 +257,7 @@ if eh_expedidor:
             hora_formatada = agora.strftime("%H:%M:%S")
             salvar_historico = True
             
+            # CORREÇÃO DEFINITIVA: Processamento linear e simples sem aninhamentos que geram erros de recuo
             if opcao == "Entrar na Fila (Chegada Inicial)":
                 if nome_selecionado not in st.session_state["fila_global"]:
                     st.session_state["fila_global"].append(nome_selecionado)
-                salvar_historico = False
-                
-            elif opcao == "Saída para Entrega":
