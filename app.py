@@ -108,7 +108,7 @@ if "fila_global" not in st.session_state:
 if "entregador_clicado" not in st.session_state:
     st.session_state.entregador_clicado = None
 
-# --- SIDEBAR: ÁREA DE ACESSO DO EXPEDIDOR ---
+# --- SIDEBAR: ÁREA DE ACESSO DO EXPEDIDOR COMPLETA ---
 st.sidebar.header("🔑 Área Restrita")
 senha_digitada = st.sidebar.text_input("Senha do Expedidor:", type="password", help="Digite a senha para liberar os comandos de lançamento.")
 
@@ -116,10 +116,36 @@ eh_expedidor = (senha_digitada == SENHA_EXPEDIDOR)
 
 if eh_expedidor:
     st.sidebar.success("🔓 Modo Expedidor Ativo!")
+    
+    # MUDANÇA: Botão de Resetar posicionado na barra lateral abaixo do Login
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("⚙️ Configurações do Painel")
+    if st.sidebar.button("🗑️ Resetar Tudo (Fila e Histórico)", use_container_width=True):
+        st.session_state["historico_global"] = []
+        st.session_state["fila_global"] = []
+        banco["relatorio_entregas"] = []
+        banco["fila_espera"] = []
+        st.rerun()
 else:
     if senha_digitada:
         st.sidebar.error("❌ Senha Incorreta")
     st.sidebar.info("💡 Modo Visualização: Utilize a senha para fazer lançamentos.")
+
+# MUDANÇA: Exibição do Histórico do Dia e Download fixados na barra lateral esquerda abaixo de tudo
+st.sidebar.markdown("---")
+st.sidebar.subheader("📋 Histórico do Dia")
+if st.session_state["historico_global"]:
+    df_relatorio = pd.DataFrame(st.session_state["historico_global"])
+    df_visualizacao = df_relatorio[["Data", "Horário", "Entregador", "Status", "Pedido", "Destino"]].iloc[::-1]
+    st.sidebar.dataframe(df_visualizacao, use_container_width=True, hide_index=True)
+else:
+    st.sidebar.info("Nenhum registro histórico até o momento.")
+
+# Botão de download de planilha sempre disponível no rodapé da barra lateral
+df_download = pd.DataFrame(st.session_state["historico_global"]) if st.session_state["historico_global"] else pd.DataFrame(columns=["Data", "Horário", "Entregador", "Status", "Pedido", "Destino"])
+csv = df_download.to_csv(index=False).encode('utf-8')
+st.sidebar.download_button("📥 Baixar Relatório (CSV)", data=csv, file_name="entregas.csv", mime="text/csv", use_container_width=True)
+
 
 st.markdown("---")
 
@@ -201,11 +227,9 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
-        # A bolinha verde SÓ APARECE se a fila não estiver vazia E o primeiro da lista for o entregador atual
         esta_na_vez = False
-        if st.session_state["fila_global"]:
-            if st.session_state["fila_global"][0] == nome:
-                esta_na_vez = True
+        if st.session_state["fila_global"] and st.session_state["fila_global"] == nome:
+            esta_na_vez = True
                 
         label_botao = f"🟢 {nome}" if esta_na_vez else nome
         
@@ -246,31 +270,3 @@ if eh_expedidor:
                 salvar_historico = False
                 
             elif opcao == "Saída para Entrega":
-                if nome_selecionado in st.session_state["fila_global"]:
-                    st.session_state["fila_global"].remove(nome_selecionado)
-                st.toast(f"🚀 {nome_selecionado} saiu para a rua. Nome removido da fila da base!")
-                    
-            elif opcao == "Retorno da Entrega":
-                if nome_selecionado in st.session_state["fila_global"]:
-                    st.session_state["fila_global"].remove(nome_selecionado)
-                st.session_state["fila_global"].append(nome_selecionado)
-                st.toast(f"📥 {nome_selecionado} retornou da rua e foi para o final da fila.")
-
-            if salvar_historico:
-                novo_item = {
-                    "Data": agora.strftime("%d/%m/%Y"),
-                    "Horário": hora_formatada,
-                    "Entregador": nome_selecionado,
-                    "Status": opcao,
-                    "Pedido": num_pedido if num_pedido else "-",
-                    "Destino": bairro_destino if bairro_destino else "-"
-                }
-                st.session_state["historico_global"].append(novo_item)
-            
-            banco["relatorio_entregas"] = st.session_state["historico_global"]
-            banco["fila_espera"] = st.session_state["fila_global"]
-            
-            st.session_state.entregador_clicado = None
-            st.rerun()
-            
-    st.markdown("---")
