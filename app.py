@@ -78,25 +78,17 @@ EMOJIS_ENTREGADORES = {
     "Eduardo": "🧔🏻"       
 }
 
-@st.cache_resource
-def iniciar_banco_dados():
-    return {
-        "relatorio_entregas": [],
-        "fila_espera": [] 
-    }
-
-banco = iniciar_banco_dados()
-
+# --- BANCO DE DADOS UNIFICADO E PERSISTENTE ---
 if "historico_global" not in st.session_state:
-    st.session_state["historico_global"] = banco["relatorio_entregas"]
+    st.session_state["historico_global"] = []
 
 if "fila_global" not in st.session_state:
-    st.session_state["fila_global"] = banco["fila_espera"]
+    st.session_state["fila_global"] = []
 
 if "entregador_clicado" not in st.session_state:
     st.session_state.entregador_clicado = None
 
-# --- SIDEBAR ---
+# --- SIDEBAR COMPLETA ---
 st.sidebar.header("🔑 Área Restrita")
 senha_digitada = st.sidebar.text_input("Senha do Expedidor:", type="password", help="Digite a senha para liberar os comandos de lançamento.")
 
@@ -109,8 +101,6 @@ if eh_expedidor:
     if st.sidebar.button("🗑️ Resetar Tudo (Fila e Histórico)", use_container_width=True):
         st.session_state["historico_global"] = []
         st.session_state["fila_global"] = []
-        banco["relatorio_entregas"] = []
-        banco["fila_espera"] = []
         st.rerun()
 else:
     if senha_digitada:
@@ -158,7 +148,7 @@ else:
 
 st.markdown("---")
 
-# --- PAINEL DE RANKING ---
+# --- PAINEL DE RANKING CORRIGIDO ---
 st.subheader("🏆 Ranking de Entregas do Dia")
 
 placar = {nome: 0 for nome in ENTREGADORES}
@@ -168,7 +158,8 @@ for registro in st.session_state["historico_global"]:
         if entregador_nome in placar:
             placar[entregador_nome] += 1
 
-ranking_ordenado = sorted(placar.items(), key=lambda x: x, reverse=True)
+# CORREÇÃO: Ordena de forma correta pelo valor numérico de viagens (índice 1 do par)
+ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
 valores_viagens = [qtd for nome, qtd in ranking_ordenado]
 maior_viagem = max(valores_viagens) if valores_viagens and max(valores_viagens) > 0 else 1
 
@@ -194,21 +185,10 @@ st.markdown("---")
 if eh_expedidor:
     st.subheader("🛠️ Painel de Controle do Expedidor")
     
-    st.markdown("""
-        <style>
-        div.stButton > button p {
-            white-space: nowrap !important;
-            font-size: 14px !important;
-            font-weight: bold !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
     st.write("1. Escolha o Entregador:")
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
-        # CORREÇÃO DEFINITIVA DA BOLINHA VERDE: Verifica de forma segura se a lista tem dados antes de ler o índice [0]
         esta_na_vez = False
         if len(st.session_state["fila_global"]) > 0:
             if st.session_state["fila_global"][0] == nome:
@@ -252,6 +232,8 @@ if eh_expedidor:
                 
             elif opcao == "Saída para Entrega":
                 if nome_selecionado in st.session_state["fila_global"]:
+                    if st.session_state["fila_global"][0] != nome_selecionado:
+                        st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem!", icon="🚨")
                     st.session_state["fila_global"].remove(nome_selecionado)
                 st.toast(f"🚀 {nome_selecionado} saiu para a rua.")
                     
@@ -259,3 +241,11 @@ if eh_expedidor:
                 if nome_selecionado in st.session_state["fila_global"]:
                     st.session_state["fila_global"].remove(nome_selecionado)
                 st.session_state["fila_global"].append(nome_selecionado)
+                st.toast(f"📥 {nome_selecionado} retornou para o final da fila.")
+
+            # Salva todas as ações no histórico
+            novo_item = {
+                "Data": agora.strftime("%d/%m/%Y"),
+                "Horário": hora_formatada,
+                "Entregador": nome_selecionado,
+                "Status": opcao,
