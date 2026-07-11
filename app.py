@@ -25,29 +25,23 @@ ENTREGADORES = [
     "Eduardo"
 ]
 
-# Dicionário de Emojis ajustado (Guilherme com emoji seguro e compatível)
+# Dicionário de Emojis ajustado (Todos 100% seguros e compatíveis)
 EMOJIS_ENTREGADORES = {
-    "Guilherme": "🧑🏾",    # Moreno Forte (Emoji compatível)
-    "João Carlos": "🧑🏾‍🦱", # Moreno Cheinho
-    "Keyper": "👦🏼",      # Gordinho
-    "Nisley": "👨‍🦲",      # Meio Calvo
-    "Anderson": "🧑🏻",    # Narizudo/Padrão
-    "Hudson": "🧔🏽",      # Moicano e Barba Baixa
-    "Eduardo": "🧔🏻"       # Branco, Magro e Barbudo
+    "Guilherme": "🧑🏾",    # Corrigido
+    "João Carlos": "👦🏾", # Corrigido para não duplicar
+    "Keyper": "👦🏼",      
+    "Nisley": "👨‍🦲",      
+    "Anderson": "🧑🏻",    
+    "Hudson": "🧔🏽",      
+    "Eduardo": "🧔🏻"       
 }
 
-# --- BANCO DE DADOS COMPARTILHADO ---
-@st.cache_resource
-def iniciar_banco_dados():
-    return {
-        "relatorio_entregas": [],
-        "fila_espera": list(ENTREGADORES)
-    }
+# --- BANCO DE DADOS PERSISTENTE (Evita que o histórico e a fila sumam) ---
+if "historico_global" not in st.session_state:
+    st.session_state["historico_global"] = []
 
-banco = iniciar_banco_dados()
-
-if "entregador_clicado" not in st.session_state:
-    st.session_state.entregador_clicado = None
+if "fila_global" not in st.session_state:
+    st.session_state["fila_global"] = list(ENTREGADORES)
 
 # --- SIDEBAR: ÁREA DE ACESSO DO EXPEDIDOR ---
 st.sidebar.header("🔑 Área Restrita")
@@ -67,8 +61,8 @@ st.markdown("---")
 # --- PAINEL VISUAL DA FILA DE ESPERA (PÚBLICO) ---
 st.subheader("⏱️ Próximos a Sair (Ordem da Fila)")
 
-if banco["fila_espera"]:
-    for idx, nome in enumerate(banco["fila_espera"]):
+if st.session_state["fila_global"]:
+    for idx, nome in enumerate(st.session_state["fila_global"]):
         if idx == 0:
             posicao = "🥇 1º da Vez"
         elif idx == 1:
@@ -94,9 +88,10 @@ st.markdown("---")
 st.subheader("🏆 Ranking de Entregas do Dia")
 
 placar = {nome: 0 for nome in ENTREGADORES}
-for registro in banco["relatorio_entregas"]:
+for registro in st.session_state["historico_global"]:
     if registro["Status"] == "Saída para Entrega":
-        placar[registro["Entregador"]] += 1
+        if registro["Entregador"] in placar:
+            placar[registro["Entregador"]] += 1
 
 ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
 maior_numero_entregas = ranking_ordenado[0][1] if ranking_ordenado else 0
@@ -123,11 +118,14 @@ st.markdown("---")
 if eh_expedidor:
     st.subheader("🛠️ Painel de Controle do Expedidor")
     
+    if "entregador_clicado" not in st.session_state:
+        st.session_state.entregador_clicado = None
+
     st.write("1. Escolha o Entregador:")
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
-        esta_na_vez = (banco["fila_espera"] and banco["fila_espera"][0] == nome)
+        esta_na_vez = (st.session_state["fila_global"] and st.session_state["fila_global"][0] == nome)
         label_botao = f"🟢 {nome}" if esta_na_vez else nome
         if colunas[i].button(label_botao, use_container_width=True, key=f"btn_{nome}"):
             st.session_state.entregador_clicado = nome
@@ -139,7 +137,7 @@ if eh_expedidor:
         st.info(f"⚡ Entregador selecionado: **{nome_selecionado}**")
         st.write("2. Selecione a ação:")
         
-        index_padrao = 0 if nome_selecionado in banco["fila_espera"] else 1
+        index_padrao = 0 if nome_selecionado in st.session_state["fila_global"] else 1
         opcao = st.radio("Ação:", ["Saída para Entrega", "Retorno da Entrega"], index=index_padrao, horizontal=True, label_visibility="collapsed")
         
         num_pedido = ""
@@ -155,19 +153,19 @@ if eh_expedidor:
             hora_formatada = agora.strftime("%H:%M:%S")
             
             if opcao == "Saída para Entrega":
-                if nome_selecionado in banco["fila_espera"]:
-                    if banco["fila_espera"][0] != nome_selecionado:
+                if nome_selecionado in st.session_state["fila_global"]:
+                    if st.session_state["fila_global"][0] != nome_selecionado:
                         st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem da vez!", icon="🚨")
-                    banco["fila_espera"].remove(nome_selecionado)
+                    st.session_state["fila_global"].remove(nome_selecionado)
                 
-                if nome_selecionado not in banco["fila_espera"]:
-                    banco["fila_espera"].append(nome_selecionado)
+                if nome_selecionado not in st.session_state["fila_global"]:
+                    st.session_state["fila_global"].append(nome_selecionado)
                 st.toast(f"🚀 {nome_selecionado} saiu! Seu nome foi para o final da fila rotativa.")
                     
             elif opcao == "Retorno da Entrega":
-                if nome_selecionado in banco["fila_espera"]:
-                    banco["fila_espera"].remove(nome_selecionado)
-                banco["fila_espera"].append(nome_selecionado)
+                if nome_selecionado in st.session_state["fila_global"]:
+                    st.session_state["fila_global"].remove(nome_selecionado)
+                st.session_state["fila_global"].append(nome_selecionado)
                 st.toast(f"📥 {nome_selecionado} voltou! Posição na fila atualizada por ordem de chegada.")
 
             novo_item = {
@@ -178,7 +176,7 @@ if eh_expedidor:
                 "Pedido": num_pedido if num_pedido else "-",
                 "Destino": bairro_destino if bairro_destino else "-"
             }
-            banco["relatorio_entregas"].append(novo_item)
+            st.session_state["historico_global"].append(novo_item)
             
             st.session_state.entregador_clicado = None
             st.rerun()
@@ -189,8 +187,8 @@ else:
 
 # --- EXIBIÇÃO DO RELATÓRIO TEMPORÁRIO (PÚBLICO) ---
 st.subheader("📋 Histórico do Dia")
-if banco["relatorio_entregas"]:
-    df_relatorio = pd.DataFrame(banco["relatorio_entregas"])
+if st.session_state["historico_global"]:
+    df_relatorio = pd.DataFrame(st.session_state["historico_global"])
     
     def estilizar_status(val):
         if val == "Saída para Entrega": return 'background-color: #28a745; color: white; font-weight: bold;'
@@ -208,8 +206,8 @@ if banco["relatorio_entregas"]:
     
     if eh_expedidor:
         if col_limpar.button("🗑️ Resetar Tudo (Fila e Histórico)", use_container_width=True):
-            banco["relatorio_entregas"] = []
-            banco["fila_espera"] = list(ENTREGADORES)
+            st.session_state["historico_global"] = []
+            st.session_state["fila_global"] = list(ENTREGADORES)
             st.session_state.entregador_clicado = None
             st.rerun()
 else:
