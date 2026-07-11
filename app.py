@@ -86,6 +86,7 @@ EMOJIS_ENTREGADORES = {
     "Eduardo": "🧔🏻"       
 }
 
+# --- BANCO DE DADOS GLOBAL COMPARTILHADO ---
 @st.cache_resource
 def iniciar_banco_dados():
     return {
@@ -95,6 +96,7 @@ def iniciar_banco_dados():
 
 banco = iniciar_banco_dados()
 
+# Sincroniza o banco global com a sessão atual do navegador
 if "historico_global" not in st.session_state:
     st.session_state["historico_global"] = banco["relatorio_entregas"]
 
@@ -176,7 +178,9 @@ for registro in st.session_state["historico_global"]:
         if entregador_nome in placar:
             placar[entregador_nome] += 1
 
-ranking_ordenado = sorted(placar.items(), key=lambda x: x, reverse=True)
+ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
+
+# CORREÇÃO DEFINITIVA DO CÁLCULO DE GRÁFICOS: Pega o maior valor numérico com segurança
 valores_viagens = [qtd for nome, qtd in ranking_ordenado]
 maior_viagem = max(valores_viagens) if valores_viagens and max(valores_viagens) > 0 else 1
 
@@ -218,7 +222,7 @@ if eh_expedidor:
     for i, nome in enumerate(ENTREGADORES):
         esta_na_vez = False
         if len(st.session_state["fila_global"]) > 0:
-            if st.session_state["fila_global"] == nome:
+            if st.session_state["fila_global"][0] == nome:
                 esta_na_vez = True
                 
         label_botao = f"🟢 {nome}" if esta_na_vez else nome
@@ -259,5 +263,3 @@ if eh_expedidor:
                 salvar_historico = False
                 
             elif opcao == "Saída para Entrega":
-                if nome_selecionado in st.session_state["fila_global"]:
-                    if st.session_state["fila_global"] != nome_selecionado:
