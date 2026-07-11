@@ -46,12 +46,6 @@ if img_base64:
             border: 1px solid rgba(255, 255, 255, 0.4) !important;
             background-color: rgba(255, 255, 255, 0.1) !important;
         }}
-        div.stForm {{
-            background-color: rgba(255, 255, 255, 0.05) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            padding: 15px !important;
-            border-radius: 8px !important;
-        }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -59,15 +53,7 @@ st.title("🛵 Castrillon Entregas & Controle de Fila")
 
 SENHA_EXPEDIDOR = "castrillon2026"
 
-ENTREGADORES = [
-    "Gui", 
-    "João", 
-    "Keyper", 
-    "Nisley", 
-    "Anderson", 
-    "Hudson", 
-    "Eduardo"
-]
+ENTREGADORES = ["Gui", "João", "Keyper", "Nisley", "Anderson", "Hudson", "Eduardo"]
 
 EMOJIS_ENTREGADORES = {
     "Gui": "🧑🏾",    
@@ -97,6 +83,7 @@ if "fila_global" not in st.session_state:
 if "entregador_clicado" not in st.session_state:
     st.session_state.entregador_clicado = None
 
+# --- SIDEBAR: ÁREA DE ACESSO DO EXPEDIDOR COMPLETA ---
 st.sidebar.header("🔑 Área Restrita")
 senha_digitada = st.sidebar.text_input("Senha do Expedidor:", type="password", help="Digite a senha para liberar os comandos de lançamento.")
 
@@ -132,6 +119,7 @@ st.sidebar.download_button("📥 Baixar Relatório (CSV)", data=csv, file_name="
 
 st.markdown("---")
 
+# --- PAINEL VISUAL DA FILA DE ESPERA (PÚBLICO) ---
 st.subheader("⏱️ Próximos a Sair (Ordem da Fila)")
 
 if st.session_state["fila_global"]:
@@ -157,6 +145,7 @@ else:
 
 st.markdown("---")
 
+# --- PAINEL DE RANKING EM TEMPO REAL (PÚBLICO) ---
 st.subheader("🏆 Ranking de Entregas do Dia")
 
 placar = {nome: 0 for nome in ENTREGADORES}
@@ -167,7 +156,6 @@ for registro in st.session_state["historico_global"]:
             placar[entregador_nome] += 1
 
 ranking_ordenado = sorted(placar.items(), key=lambda x: x, reverse=True)
-
 valores_viagens = [qtd for nome, qtd in ranking_ordenado]
 maior_viagem = max(valores_viagens) if valores_viagens and max(valores_viagens) > 0 else 1
 
@@ -189,18 +177,9 @@ with col_rank2:
 
 st.markdown("---")
 
+# --- SEÇÃO DE COMANDOS ---
 if eh_expedidor:
     st.subheader("🛠️ Painel de Controle do Expedidor")
-    
-    st.markdown("""
-        <style>
-        div.stButton > button p {
-            white-space: nowrap !important;
-            font-size: 14px !important;
-            font-weight: bold !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
     
     st.write("1. Escolha o Entregador:")
     colunas = st.columns(len(ENTREGADORES))
@@ -220,46 +199,56 @@ if eh_expedidor:
     nome_selecionado = st.session_state.entregador_clicado
 
     if nome_selecionado:
-        with st.form(key=f"form_{nome_selecionado}"):
-            st.info(f"⚡ Entregador selecionado: **{nome_selecionado}**")
-            st.write("2. Selecione a ação:")
+        st.info(f"⚡ Entregador selecionado: **{nome_selecionado}**")
+        st.write("2. Selecione a ação:")
+        
+        if nome_selecionado in st.session_state["fila_global"]:
+            opcoes_acao = ["Saída para Entrega"]
+        else:
+            opcoes_acao = ["Entrar na Fila (Chegada Inicial)", "Retorno da Entrega"]
             
-            if nome_selecionado in st.session_state["fila_global"]:
-                opcoes_acao = ["Saída para Entrega"]
-            else:
-                opcoes_acao = ["Entrar na Fila (Chegada Inicial)", "Retorno da Entrega"]
-                
-            opcao = st.radio("Ação:", opcoes_acao, horizontal=True, key=f"radio_{nome_selecionado}", label_visibility="collapsed")
-            
+        opcao = st.radio("Ação:", opcoes_acao, horizontal=True, key=f"rad_{nome_selecionado}", label_visibility="collapsed")
+        
+        num_pedido = ""
+        bairro_destino = ""
+        if opcao == "Saída para Entrega":
             st.write("3. Informações da Entrega (Opcional):")
             col_ped, col_bai = st.columns(2)
-            num_pedido = col_ped.text_input("Nº do Pedido / Nota:", placeholder="Ex: 1542", key=f"ped_{nome_selecionado}")
-            bairro_destino = col_bai.text_input("Bairro / Destino:", placeholder="Ex: Centro", key=f"bai_{nome_selecionado}")
-            
-            botao_confirmar = st.form_submit_button(f"Confirmar Registro para {nome_selecionado}", type="primary", use_container_width=True)
-            
-            if botao_confirmar:
-                agora = datetime.now()
-                hora_formatada = agora.strftime("%H:%M:%S")
-                salvar_historico = True
-                
-                if opcao == "Entrar na Fila (Chegada Inicial)":
-                    if nome_selecionado not in st.session_state["fila_global"]:
-                        st.session_state["fila_global"].append(nome_selecionado)
-                    salvar_historico = False
-                    
-                elif opcao == "Saída para Entrega":
-                    if nome_selecionado in st.session_state["fila_global"]:
-                        if st.session_state["fila_global"][0] != nome_selecionado:
-                            st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem!", icon="🚨")
-                        st.session_state["fila_global"].remove(nome_selecionado)
-                        
-                elif opcao == "Retorno da Entrega":
-                    if nome_selecionado in st.session_state["fila_global"]:
-                        st.session_state["fila_global"].remove(nome_selecionado)
-                    st.session_state["fila_global"].append(nome_selecionado)
+            num_pedido = col_ped.text_input("Nº do Pedido / Nota:", placeholder="Ex: 1542", key=f"p_{nome_selecionado}")
+            bairro_destino = col_bai.text_input("Bairro / Destino:", placeholder="Ex: Centro", key=f"b_{nome_selecionado}")
 
-                if salvar_historico:
-                    novo_item = {
-                        "Data": agora.strftime("%d/%m/%Y"),
-                        "Horário": hora_formatada,
+        if st.button(f"Confirmar Registro para {nome_selecionado}", type="primary", use_container_width=True, key=f"ok_{nome_selecionado}"):
+            agora = datetime.now()
+            hora_formatada = agora.strftime("%H:%M:%S")
+            salvar_historico = True
+            
+            if opcao == "Entrar na Fila (Chegada Inicial)":
+                if nome_selecionado not in st.session_state["fila_global"]:
+                    st.session_state["fila_global"].append(nome_selecionado)
+                salvar_historico = False
+                
+            elif opcao == "Saída para Entrega":
+                if nome_selecionado in st.session_state["fila_global"]:
+                    if st.session_state["fila_global"][0] != nome_selecionado:
+                        st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem!", icon="🚨")
+                    st.session_state["fila_global"].remove(nome_selecionado)
+                    
+            elif opcao == "Retorno da Entrega":
+                if nome_selecionado in st.session_state["fila_global"]:
+                    st.session_state["fila_global"].remove(nome_selecionado)
+                st.session_state["fila_global"].append(nome_selecionado)
+
+            if salvar_historico:
+                novo_item = {
+                    "Data": agora.strftime("%d/%m/%Y"),
+                    "Horário": hora_formatada,
+                    "Entregador": nome_selecionado,
+                    "Status": opcao,
+                    "Pedido": num_pedido if num_pedido else "-",
+                    "Destino": bairro_destino if bairro_destino else "-"
+                }
+                st.session_state["historico_global"].append(novo_item)
+            
+            banco["relatorio_entregas"] = st.session_state["historico_global"]
+            banco["fila_espera"] = st.session_state["fila_global"]
+            
