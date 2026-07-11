@@ -41,7 +41,7 @@ EMOJIS_ENTREGADORES = {
 def iniciar_banco_dados():
     return {
         "relatorio_entregas": [],
-        "fila_espera": [] # Começa vazia para a primeira rodada dinâmica de chegada
+        "fila_espera": [] 
     }
 
 banco = iniciar_banco_dados()
@@ -106,8 +106,8 @@ for registro in st.session_state["historico_global"]:
         if registro["Entregador"] in placar:
             placar[registro["Entregador"]] += 1
 
-ranking_ordenado = sorted(placar.items(), key=lambda x: x, reverse=True)
-maior_numero_entregas = ranking_ordenado if ranking_ordenado and ranking_ordenado > 0 else 1
+ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
+maior_numero_entregas = ranking_ordenado[0][1] if ranking_ordenado and ranking_ordenado[0][1] > 0 else 1
 
 col_rank1, col_rank2 = st.columns(2)
 with col_rank1:
@@ -131,7 +131,6 @@ st.markdown("---")
 if eh_expedidor:
     st.subheader("🛠️ Painel de Controle do Expedidor")
     
-    # CSS injetado para forçar os botões a não quebrarem o texto e ficarem bem ajustados
     st.markdown("""
         <style>
         div.stButton > button p {
@@ -146,7 +145,6 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
-        # Verifica se ele é o 1º da vez atualmente para ganhar a sinalização de bolinha verde
         esta_na_vez = (st.session_state["fila_global"] and st.session_state["fila_global"][0] == nome)
         label_botao = f"🟢 {nome}" if esta_na_vez else nome
         
@@ -160,7 +158,6 @@ if eh_expedidor:
         st.info(f"⚡ Entregador selecionado: **{nome_selecionado}**")
         st.write("2. Selecione a ação:")
         
-        # Define quais ações aparecem dinamicamente baseadas em onde o entregador está
         opcoes_acao = ["Saída para Entrega", "Retorno da Entrega"]
         if nome_selecionado not in st.session_state["fila_global"]:
             opcoes_acao.insert(0, "Entrar na Fila (Chegada Inicial)")
@@ -194,8 +191,6 @@ if eh_expedidor:
                 st.toast(f"🚀 {nome_selecionado} saiu para entrega!")
                     
             elif opcao == "Retorno da Entrega":
-                # LÓGICA DE QUEM CHEGA PRIMEIRO ROUBA A VEZ:
-                # O entregador retornou da rua, portanto entra na base no FINAL da fila dos disponíveis.
                 if nome_selecionado in st.session_state["fila_global"]:
                     st.session_state["fila_global"].remove(nome_selecionado)
                 st.session_state["fila_global"].append(nome_selecionado)
@@ -212,7 +207,6 @@ if eh_expedidor:
                 }
                 st.session_state["historico_global"].append(novo_item)
             
-            # Sincroniza o banco na nuvem
             banco["relatorio_entregas"] = st.session_state["historico_global"]
             banco["fila_espera"] = st.session_state["fila_global"]
             
@@ -238,7 +232,6 @@ if st.session_state["historico_global"]:
     st.dataframe(df_estilizado, use_container_width=True, hide_index=True)
     
     col_csv, col_limpar = st.columns(2)
-    
     csv = df_relatorio.to_csv(index=False).encode('utf-8')
     col_csv.download_button("📥 Baixar Relatório (CSV)", data=csv, file_name="entregas.csv", mime="text/csv", use_container_width=True)
     
@@ -248,6 +241,6 @@ if st.session_state["historico_global"]:
             st.session_state["fila_global"] = []
             banco["relatorio_entregas"] = []
             banco["fila_espera"] = []
-            st.session_state.entregador_clicado = None
             st.rerun()
 else:
+    st.info("Nenhum registro histórico até o momento.")
