@@ -206,7 +206,6 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
-        # CORREÇÃO DA BOLINHA VERDE: Ela verifica estritamente se o entregador atual é o primeiro da fila ativa
         esta_na_vez = False
         if len(st.session_state["fila_global"]) > 0:
             if st.session_state["fila_global"][0] == nome:
@@ -221,7 +220,6 @@ if eh_expedidor:
     nome_selecionado = st.session_state.entregador_clicado
 
     if nome_selecionado:
-        # IMPLEMENTAÇÃO DO FORMULÁRIO: Garante resposta imediata no primeiro clique
         with st.form(key=f"form_{nome_selecionado}"):
             st.info(f"⚡ Entregador selecionado: **{nome_selecionado}**")
             st.write("2. Selecione a ação:")
@@ -252,6 +250,8 @@ if eh_expedidor:
                     
                 elif opcao == "Saída para Entrega":
                     if nome_selecionado in st.session_state["fila_global"]:
+                        if st.session_state["fila_global"][0] != nome_selecionado:
+                            st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem!", icon="🚨")
                         st.session_state["fila_global"].remove(nome_selecionado)
                         
                 elif opcao == "Retorno da Entrega":
