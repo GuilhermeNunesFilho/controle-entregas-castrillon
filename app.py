@@ -228,7 +228,7 @@ if eh_expedidor:
 
         if st.button(f"Confirmar Registro para {nome_selecionado}", type="primary", use_container_width=True):
             agora = datetime.now()
-            hora_formatada = cafeterias = agora.strftime("%H:%M:%S")
+            hora_formatada = agora.strftime("%H:%M:%S")
             salvar_historico = True
             
             if opcao == "Entrar na Fila (Chegada Inicial)":
