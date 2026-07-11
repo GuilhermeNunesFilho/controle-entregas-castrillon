@@ -6,7 +6,6 @@ from datetime import datetime
 st.set_page_config(page_title="Castrillon Entregas", page_icon="🛵", layout="centered")
 
 # --- TRATAMENTO DO FUNDO: IMAGEM DE BACKGROUND PERSONALIZADA ---
-# Remove a imagem do topo e define como fundo sem atrapalhar a leitura do texto
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
@@ -263,3 +262,5 @@ if st.session_state["historico_global"]:
     col_csv.download_button("📥 Baixar Relatório (CSV)", data=csv, file_name="entregas.csv", mime="text/csv", use_container_width=True)
     
     if eh_expedidor:
+        if col_limpar.button("🗑️ Resetar Tudo (Fila e Histórico)", use_container_width=True):
+            st.session_state["historico_global"] = []
