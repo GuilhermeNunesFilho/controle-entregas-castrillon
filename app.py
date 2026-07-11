@@ -273,5 +273,3 @@ else:
 st.subheader("📋 Histórico do Dia")
 if st.session_state["historico_global"]:
     df_relatorio = pd.DataFrame(st.session_state["historico_global"])
-    
-    def estilizar_status(val):
