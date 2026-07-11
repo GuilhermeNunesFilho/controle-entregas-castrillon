@@ -7,7 +7,7 @@ import base64
 # Configuração visual da página
 st.set_page_config(page_title="Castrillon Entregas", page_icon="🛵", layout="centered")
 
-# --- CONVERTE A IMAGEM LOCAL PARA COLOCAR NO FUNDO COM SEGURANÇA ---
+# --- TRATAMENTO DO FUNDO: IMAGEM DE BACKGROUND PERSONALIZADA ---
 def obter_base64_imagem(caminho_arquivo):
     if os.path.exists(caminho_arquivo):
         with open(caminho_arquivo, "rb") as f:
@@ -17,7 +17,7 @@ def obter_base64_imagem(caminho_arquivo):
 
 img_base64 = obter_base64_imagem("logo.png")
 
-# Aplica o fundo escuro ajustado para ficar MAIS CLARO e visível
+# Aplica o fundo escuro ajustado e força os textos e botões a ficarem brancos
 if img_base64:
     st.markdown(f"""
         <style>
@@ -31,9 +31,21 @@ if img_base64:
         [data-testid="stHeader"] {{
             background: transparent;
         }}
-        h1, h2, h3, p, span, stMarkdown {{
+        
+        /* Força a cor branca em todos os textos comuns */
+        h1, h2, h3, p, span, label, stMarkdown {{
             color: #ffffff !important;
         }}
+        
+        /* CORREÇÃO: Força o texto de dentro dos botões a ficar BRANCO */
+        button[data-testid="baseButton-secondary"] p {{
+            color: #ffffff !important;
+        }}
+        button[data-testid="baseButton-secondary"] {{
+            border: 1px solid rgba(255, 255, 255, 0.4) !important;
+            background-color: rgba(255, 255, 255, 0.1) !important;
+        }}
+        
         div.stForm {{
             background-color: rgba(255, 255, 255, 0.05) !important;
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -46,7 +58,7 @@ st.title("🛵 Castrillon Entregas & Controle de Fila")
 # 1. DEFINIÇÃO DA SENHA DO EXPEDIDOR
 SENHA_EXPEDIDOR = "castrillon2026"
 
-# 2. LISTA DE ENTREGADORES OFICIAIS (Nome alterado para Gui)
+# 2. LISTA DE ENTREGADORES OFICIAIS
 ENTREGADORES = [
     "Gui", 
     "João", 
@@ -136,16 +148,13 @@ placar = {nome: 0 for nome in ENTREGADORES}
 for registro in st.session_state["historico_global"]:
     if registro["Status"] == "Saída para Entrega":
         entregador_nome = registro["Entregador"]
-        # Converte registros antigos de Guilherme para Gui
         if entregador_nome == "Guilherme":
             entregador_nome = "Gui"
         if entregador_nome in placar:
             placar[entregador_nome] += 1
 
-# Ordena o ranking por maior número de viagens
-ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
+ranking_ordenado = sorted(placar.items(), key=lambda x: x, reverse=True)
 
-# Pega o maior valor de viagens de forma segura
 valores_viagens = [qtd for nome, qtd in ranking_ordenado]
 maior_viagem = max(valores_viagens) if valores_viagens and max(valores_viagens) > 0 else 1
 
@@ -177,7 +186,6 @@ if eh_expedidor:
             white-space: nowrap !important;
             font-size: 14px !important;
             font-weight: bold !important;
-            color: #31333F !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -187,7 +195,7 @@ if eh_expedidor:
 
     for i, nome in enumerate(ENTREGADORES):
         esta_na_vez = False
-        if st.session_state["fila_global"] and st.session_state["fila_global"][0] == nome:
+        if st.session_state["fila_global"] and st.session_state["fila_global"] == nome:
             esta_na_vez = True
                 
         label_botao = f"🟢 {nome}" if esta_na_vez else nome
@@ -266,7 +274,3 @@ if st.session_state["historico_global"]:
     df_relatorio = pd.DataFrame(st.session_state["historico_global"])
     
     def estilizar_status(val):
-        if val == "Saída para Entrega": return 'background-color: #28a745; color: white; font-weight: bold;'
-        elif val == "Retorno da Entrega": return 'background-color: #dc3545; color: white; font-weight: bold;'
-        return ''
-
