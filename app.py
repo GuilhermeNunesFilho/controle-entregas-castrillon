@@ -77,7 +77,7 @@ EMOJIS_ENTREGADORES = {
     "Eduardo": "🧔🏻"       
 }
 
-# --- FUNÇÕES DE ARQUIVO DIRETAS (SEM ERROS DE SINTAXE) ---
+# --- FUNÇÕES DE ARQUIVO DIRETAS ---
 def carregar_dados_txt():
     if not os.path.exists("dados.txt"):
         return []
@@ -117,6 +117,7 @@ if eh_expedidor:
     if st.sidebar.button("🗑️ Resetar Tudo (Fila e Histórico)", use_container_width=True):
         st.session_state["fila_global"] = []
         resetar_dados_txt()
+        st.session_state.entregador_clicado = None
         st.rerun()
 else:
     if senha_digitada:
@@ -155,8 +156,8 @@ if st.session_state["fila_global"]:
             
         emoji_perfil = EMOJIS_ENTREGADORES.get(nome, "🛵")
         
-        with st.container(border=True):
-            col_pos, col_emo, col_nom = st.columns(3)
+        with st.container():
+            col_pos, col_emo, col_nom = st.columns([1, 1, 2])
             col_pos.markdown(f"**{posicao}**")
             col_emo.markdown(f"<h3 style='margin:0; padding:0;'>{emoji_perfil}</h3>", unsafe_allow_html=True)
             col_nom.markdown(f"### {nome}")
@@ -170,7 +171,7 @@ st.subheader("🏆 Ranking de Entregas do Dia")
 
 placar = {nome: 0 for nome in ENTREGADORES}
 for reg in registros_salvos:
-    if reg[3] == "Saída para Entrega":
+    if reg[3] in ["Saída para Entrega", "Retorno da Entrega"]:
         if reg[2] in placar:
             placar[reg[2]] += 1
 
@@ -200,6 +201,7 @@ st.markdown("---")
 if eh_expedidor:
     st.subheader("🛠️ Painel de Controle do Expedidor")
     st.write("1. Escolha o Entregador:")
+    
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
@@ -225,34 +227,33 @@ if eh_expedidor:
         else:
             opcoes_acao = ["Entrar na Fila (Chegada Inicial)", "Retorno da Entrega"]
             
-        opcao = st.radio("Ação:", opcoes_acao, horizontal=True, key=f"rad_{nome_selecionado}", label_visibility="collapsed")
+        opcao = st.radio("Ação:", opcoes_acao, horizontal=True, key=f"rad_{nome_selecionado}")
         
-        num_pedido = ""
-        bairro_destino = ""
+        # Inputs adicionais para quando o entregador sai para rua
+        pedido = ""
+        destino = ""
         if opcao == "Saída para Entrega":
-            st.write("3. Informações da Entrega (Opcional):")
-            col_ped, col_bai = st.columns(2)
-            num_pedido = col_ped.text_input("Nº do Pedido / Nota:", placeholder="Ex: 1542", key=f"p_{nome_selecionado}")
-            bairro_destino = col_bai.text_input("Bairro / Destino:", placeholder="Ex: Centro", key=f"b_{nome_selecionado}")
+            col_ped, col_dest = st.columns(2)
+            pedido = col_ped.text_input("Número do Pedido:", key="input_pedido")
+            destino = col_dest.text_input("Destino / Cliente:", key="input_destino")
 
-        if st.button(f"Confirmar Registro para {nome_selecionado}", type="primary", use_container_width=True, key=f"ok_{nome_selecionado}"):
+        if st.button("Confirmar Lançamento", use_container_width=True, type="primary"):
             agora = datetime.now()
             data_atual = agora.strftime("%d/%m/%Y")
             hora_atual = agora.strftime("%H:%M:%S")
             
-            val_pedido = num_pedido if num_pedido else "-"
-            val_destino = bairro_destino if bairro_destino else "-"
-            
-            if opcao == "Entrar na Fila (Chegada Inicial)":
+            # Lógica da Fila baseado na ação selecionada
+            if opcao == "Saída para Entrega":
+                if nome_selecionado in st.session_state["fila_global"]:
+                    st.session_state["fila_global"].remove(nome_selecionado)
+                salvar_linha_txt(data_atual, hora_atual, nome_selecionado, "Saída para Entrega", pedido if pedido else "-", destino if destino else "-")
+                st.success(f"🚀 {nome_selecionado} saiu para entrega!")
+                
+            elif opcao in ["Entrar na Fila (Chegada Inicial)", "Retorno da Entrega"]:
                 if nome_selecionado not in st.session_state["fila_global"]:
                     st.session_state["fila_global"].append(nome_selecionado)
-                
-            elif opcao == "Saída para Entrega":
-                if nome_selecionado in st.session_state["fila_global"]:
-                    if st.session_state["fila_global"][0] != nome_selecionado:
-                        st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem!", icon="🚨")
-                    st.session_state["fila_global"].remove(nome_selecionado)
-                    
-            elif opcao == "Retorno da Entrega":
-                if nome_selecionado in st.session_state["fila_global"]:
-                    st.session_state["fila_global"].remove(nome_selecionado)
+                salvar_linha_txt(data_atual, hora_atual, nome_selecionado, opcao, "-", "-")
+                st.success(f"📥 {nome_selecionado} entrou na fila!")
+            
+            st.session_state.entregador_clicado = None
+            st.rerun()
