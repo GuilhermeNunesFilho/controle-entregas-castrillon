@@ -78,7 +78,7 @@ EMOJIS_ENTREGADORES = {
     "Eduardo": "🧔🏻"       
 }
 
-# --- BANCO DE DADOS UNIFICADO E PERSISTENTE ---
+# --- BANCO DE DADOS PERSISTENTE ---
 if "historico_global" not in st.session_state:
     st.session_state["historico_global"] = []
 
@@ -158,7 +158,7 @@ for registro in st.session_state["historico_global"]:
         if entregador_nome in placar:
             placar[entregador_nome] += 1
 
-# CORREÇÃO: Ordena de forma correta pelo valor numérico de viagens (índice 1 do par)
+# Ordena o ranking com segurança matemática pelo número de viagens (índice 1)
 ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
 valores_viagens = [qtd for nome, qtd in ranking_ordenado]
 maior_viagem = max(valores_viagens) if valores_viagens and max(valores_viagens) > 0 else 1
@@ -189,6 +189,7 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
+        # A bolinha verde 🟢 acende se o entregador for exatamente o primeiro da fila
         esta_na_vez = False
         if len(st.session_state["fila_global"]) > 0:
             if st.session_state["fila_global"][0] == nome:
@@ -243,9 +244,8 @@ if eh_expedidor:
                 st.session_state["fila_global"].append(nome_selecionado)
                 st.toast(f"📥 {nome_selecionado} retornou para o final da fila.")
 
-            # Salva todas as ações no histórico
-            novo_item = {
-                "Data": agora.strftime("%d/%m/%Y"),
-                "Horário": hora_formatada,
-                "Entregador": nome_selecionado,
-                "Status": opcao,
+            # Gravação direta e linear simplificada do histórico
+            novo_registro = [
+                agora.strftime("%d/%m/%Y"),
+                hora_formatada,
+                nome_selecionado,
