@@ -17,12 +17,12 @@ def obter_base64_imagem(caminho_arquivo):
 
 img_base64 = obter_base64_imagem("logo.png")
 
-# Aplica o fundo escuro com a logo centralizada sem travar
+# Aplica o fundo escuro ajustado para ficar MAIS CLARO e visível
 if img_base64:
     st.markdown(f"""
         <style>
         [data-testid="stAppViewContainer"] {{
-            background-image: linear-gradient(rgba(14, 21, 37, 0.9), rgba(14, 21, 37, 0.9)), url("data:image/png;base64,{img_base64}");
+            background-image: linear-gradient(rgba(14, 21, 37, 0.7), rgba(14, 21, 37, 0.7)), url("data:image/png;base64,{img_base64}");
             background-size: contain;
             background-position: center;
             background-repeat: no-repeat;
@@ -46,9 +46,9 @@ st.title("🛵 Castrillon Entregas & Controle de Fila")
 # 1. DEFINIÇÃO DA SENHA DO EXPEDIDOR
 SENHA_EXPEDIDOR = "castrillon2026"
 
-# 2. LISTA DE ENTREGADORES OFICIAIS
+# 2. LISTA DE ENTREGADORES OFICIAIS (Nome alterado para Gui)
 ENTREGADORES = [
-    "Guilherme", 
+    "Gui", 
     "João", 
     "Keyper", 
     "Nisley", 
@@ -59,7 +59,7 @@ ENTREGADORES = [
 
 # Dicionário de Emojis ajustado
 EMOJIS_ENTREGADORES = {
-    "Guilherme": "🧑🏾",    
+    "Gui": "🧑🏾",    
     "João": "👦🏾", 
     "Keyper": "👦🏼",      
     "Nisley": "👨‍🦲",      
@@ -136,13 +136,16 @@ placar = {nome: 0 for nome in ENTREGADORES}
 for registro in st.session_state["historico_global"]:
     if registro["Status"] == "Saída para Entrega":
         entregador_nome = registro["Entregador"]
+        # Converte registros antigos de Guilherme para Gui
+        if entregador_nome == "Guilherme":
+            entregador_nome = "Gui"
         if entregador_nome in placar:
             placar[entregador_nome] += 1
 
 # Ordena o ranking por maior número de viagens
 ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
 
-# CORREÇÃO DEFINITIVA: Pega o maior valor de viagens usando max() com segurança
+# Pega o maior valor de viagens de forma segura
 valores_viagens = [qtd for nome, qtd in ranking_ordenado]
 maior_viagem = max(valores_viagens) if valores_viagens and max(valores_viagens) > 0 else 1
 
@@ -227,8 +230,6 @@ if eh_expedidor:
                 
             elif opcao == "Saída para Entrega":
                 if nome_selecionado in st.session_state["fila_global"]:
-                    if st.session_state["fila_global"][0] != nome_selecionado:
-                        st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem!", icon="🚨")
                     st.session_state["fila_global"].remove(nome_selecionado)
                 st.toast(f"🚀 {nome_selecionado} saiu para a rua. Nome removido da fila da base!")
                     
