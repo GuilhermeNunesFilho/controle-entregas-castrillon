@@ -37,6 +37,14 @@ if img_base64:
             color: #ffffff !important;
         }}
         
+        /* Estilização dos blocos da fila para ficarem visíveis no fundo escuro */
+        [data-testid="stVerticalBlockBorderWrapper"] {{
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            border-radius: 8px !important;
+            padding: 5px !important;
+        }}
+        
         /* Força o texto de dentro dos botões a ficar BRANCO */
         button[data-testid="baseButton-secondary"] p {{
             color: #ffffff !important;
@@ -193,9 +201,11 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
+        # A bolinha verde SÓ APARECE se a fila não estiver vazia E o primeiro da lista for o entregador atual
         esta_na_vez = False
-        if st.session_state["fila_global"] and st.session_state["fila_global"] == nome:
-            esta_na_vez = True
+        if st.session_state["fila_global"]:
+            if st.session_state["fila_global"][0] == nome:
+                esta_na_vez = True
                 
         label_botao = f"🟢 {nome}" if esta_na_vez else nome
         
@@ -264,11 +274,3 @@ if eh_expedidor:
             st.rerun()
             
     st.markdown("---")
-else:
-    st.warning("🔒 Os botões de controle de fila e lançamentos estão ocultos. Digite a senha na barra lateral esquerda para liberar o acesso.")
-
-# --- EXIBIÇÃO DO RELATÓRIO TEMPORÁRIO (PÚBLICO) ---
-st.subheader("📋 Histórico do Dia")
-if st.session_state["historico_global"]:
-    df_relatorio = pd.DataFrame(st.session_state["historico_global"])
-    df_visualizacao = df_relatorio[["Data", "Horário", "Entregador", "Status", "Pedido", "Destino"]].iloc[::-1]
