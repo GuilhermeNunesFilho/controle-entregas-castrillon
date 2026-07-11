@@ -37,7 +37,7 @@ if img_base64:
             color: #ffffff !important;
         }}
         
-        /* CORREÇÃO: Força o texto de dentro dos botões a ficar BRANCO */
+        /* Força o texto de dentro dos botões a ficar BRANCO */
         button[data-testid="baseButton-secondary"] p {{
             color: #ffffff !important;
         }}
@@ -153,6 +153,7 @@ for registro in st.session_state["historico_global"]:
         if entregador_nome in placar:
             placar[entregador_nome] += 1
 
+# Ordena o ranking por maior número de viagens
 ranking_ordenado = sorted(placar.items(), key=lambda x: x, reverse=True)
 
 valores_viagens = [qtd for nome, qtd in ranking_ordenado]
@@ -227,7 +228,7 @@ if eh_expedidor:
 
         if st.button(f"Confirmar Registro para {nome_selecionado}", type="primary", use_container_width=True):
             agora = datetime.now()
-            hora_formatada = agora.strftime("%H:%M:%S")
+            hora_formatada = cafeterias = agora.strftime("%H:%M:%S")
             salvar_historico = True
             
             if opcao == "Entrar na Fila (Chegada Inicial)":
