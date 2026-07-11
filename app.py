@@ -148,8 +148,6 @@ placar = {nome: 0 for nome in ENTREGADORES}
 for registro in st.session_state["historico_global"]:
     if registro["Status"] == "Saída para Entrega":
         entregador_nome = registro["Entregador"]
-        if entregador_nome == "Guilherme":
-            entregador_nome = "Gui"
         if entregador_nome in placar:
             placar[entregador_nome] += 1
 
@@ -273,3 +271,4 @@ else:
 st.subheader("📋 Histórico do Dia")
 if st.session_state["historico_global"]:
     df_relatorio = pd.DataFrame(st.session_state["historico_global"])
+    df_visualizacao = df_relatorio[["Data", "Horário", "Entregador", "Status", "Pedido", "Destino"]].iloc[::-1]
