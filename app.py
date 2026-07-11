@@ -6,7 +6,6 @@ from datetime import datetime
 st.set_page_config(page_title="Castrillon Entregas", page_icon="🛵", layout="centered")
 
 # --- TOPO DO APP: LOGO CENTRALIZADO ---
-# Procura a imagem salva no seu repositório do GitHub
 try:
     st.image("logo.png", use_container_width=True)
 except:
@@ -37,7 +36,7 @@ FOTOS_ENTREGADORES = {
     "Eduardo": "https://dicebear.com" 
 }
 
-# --- BANCO DE DADOS COMPARTILHADO NA NUVEM ---
+# --- BANCO DE DADOS COMPARTILHADO ---
 @st.cache_resource
 def iniciar_banco_dados():
     return {
@@ -82,7 +81,15 @@ if banco["fila_espera"]:
     
     html_fila = '<div class="fila-container">'
     for idx, nome in enumerate(banco["fila_espera"]):
-        posicao = "🥇 1º" if idx == 0 else "🥈 2º" if idx == 1 else "🥉 3º" else f"{idx + 1}º"
+        if idx == 0:
+            posicao = "🥇 1º"
+        elif idx == 1:
+            posicao = "🥈 2º"
+        elif idx == 2:
+            posicao = "🥉 3º"
+        else:
+            posicao = f"{idx + 1}º"
+            
         foto_url = FOTOS_ENTREGADORES.get(nome, "https://dicebear.com")
         html_fila += f"""
         <div class="entregador-card">
@@ -112,7 +119,12 @@ maior_numero_entregas = ranking_ordenado[0][1] if ranking_ordenado else 0
 col_rank1, col_rank2 = st.columns(2)
 with col_rank1:
     for i, (nome, qtd) in enumerate(ranking_ordenado[:3]):
-        medalha = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
+        if i == 0:
+            medalha = "🥇"
+        elif i == 1:
+            medalha = "🥈"
+        else:
+            medalha = "🥉"
         st.write(f"{medalha} **{nome}**: `{qtd} viag.`")
 
 with col_rank2:
