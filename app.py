@@ -5,11 +5,31 @@ from datetime import datetime
 # Configuração visual da página
 st.set_page_config(page_title="Castrillon Entregas", page_icon="🛵", layout="centered")
 
-# --- TOPO DO APP: LOGO CENTRALIZADO ---
-try:
-    st.image("logo.png", use_container_width=True)
-except:
-    st.title("🛵 Castrillon Entregas & Controle de Fila")
+# --- TRATAMENTO DO FUNDO: IMAGEM DE BACKGROUND PERSONALIZADA ---
+# Remove a imagem do topo e define como fundo sem atrapalhar a leitura do texto
+st.markdown("""
+    <style>
+    [data-testid="stAppViewContainer"] {
+        background-image: linear-gradient(rgba(14, 21, 37, 0.85), rgba(14, 21, 37, 0.85)), url("https://githubusercontent.com");
+        background-size: contain;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }
+    [data-testid="stHeader"] {
+        background: transparent;
+    }
+    h1, h2, h3, p, span, stMarkdown {
+        color: #ffffff !important;
+    }
+    div.stForm {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("🛵 Castrillon Entregas & Controle de Fila")
 
 # 1. DEFINIÇÃO DA SENHA DO EXPEDIDOR
 SENHA_EXPEDIDOR = "castrillon2026"
@@ -108,10 +128,10 @@ for registro in st.session_state["historico_global"]:
             placar[entregador_nome] += 1
 
 # Ordena o ranking por maior número de viagens
-ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
+ranking_ordenado = sorted(placar.items(), key=lambda x: x, reverse=True)
 
 # Define o teto máximo das barras de progresso de forma segura
-maior_viagem = ranking_ordenado[0][1] if ranking_ordenado and ranking_ordenado[0][1] > 0 else 1
+maior_viagem = ranking_ordenado if ranking_ordenado and ranking_ordenado > 0 else 1
 
 col_rank1, col_rank2 = st.columns(2)
 with col_rank1:
@@ -141,6 +161,7 @@ if eh_expedidor:
             white-space: nowrap !important;
             font-size: 14px !important;
             font-weight: bold !important;
+            color: #31333F !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -149,9 +170,8 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
-        # A bolinha verde SÓ APARECE se o entregador estiver de fato no topo da fila física na base
         esta_na_vez = False
-        if st.session_state["fila_global"] and st.session_state["fila_global"][0] == nome:
+        if st.session_state["fila_global"] and st.session_state["fila_global"] == nome:
             esta_na_vez = True
                 
         label_botao = f"🟢 {nome}" if esta_na_vez else nome
@@ -166,7 +186,6 @@ if eh_expedidor:
         st.info(f"⚡ Entregador selecionado: **{nome_selecionado}**")
         st.write("2. Selecione a ação:")
         
-        # Filtra as ações: se já está na fila da base, só pode dar Saída. Se está na rua, só pode dar Retorno.
         if nome_selecionado in st.session_state["fila_global"]:
             opcoes_acao = ["Saída para Entrega"]
         else:
@@ -195,13 +214,10 @@ if eh_expedidor:
                 
             elif opcao == "Saída para Entrega":
                 if nome_selecionado in st.session_state["fila_global"]:
-                    if st.session_state["fila_global"][0] != nome_selecionado:
-                        st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem da vez!", icon="🚨")
                     st.session_state["fila_global"].remove(nome_selecionado)
                 st.toast(f"🚀 {nome_selecionado} saiu para a rua. Nome removido da fila da base!")
                     
             elif opcao == "Retorno da Entrega":
-                # REGRA RÍGIDA: Só volta para a fila da base neste exato momento, indo direto para o final
                 if nome_selecionado in st.session_state["fila_global"]:
                     st.session_state["fila_global"].remove(nome_selecionado)
                 st.session_state["fila_global"].append(nome_selecionado)
@@ -218,7 +234,6 @@ if eh_expedidor:
                 }
                 st.session_state["historico_global"].append(novo_item)
             
-            # Sincroniza com a nuvem
             banco["relatorio_entregas"] = st.session_state["historico_global"]
             banco["fila_espera"] = st.session_state["fila_global"]
             
@@ -248,11 +263,3 @@ if st.session_state["historico_global"]:
     col_csv.download_button("📥 Baixar Relatório (CSV)", data=csv, file_name="entregas.csv", mime="text/csv", use_container_width=True)
     
     if eh_expedidor:
-        if col_limpar.button("🗑️ Resetar Tudo (Fila e Histórico)", use_container_width=True):
-            st.session_state["historico_global"] = []
-            st.session_state["fila_global"] = []
-            banco["relatorio_entregas"] = []
-            banco["fila_espera"] = []
-            st.rerun()
-else:
-    st.info("Nenhum registro histórico até o momento.")
