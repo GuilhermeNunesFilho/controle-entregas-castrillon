@@ -65,7 +65,6 @@ if img_base64:
 st.title("🛵 Castrillon Entregas & Controle de Fila")
 
 SENHA_EXPEDIDOR = "castrillon2026"
-
 ENTREGADORES = ["Gui", "João", "Keyper", "Nisley", "Anderson", "Hudson", "Eduardo"]
 
 EMOJIS_ENTREGADORES = {
@@ -78,10 +77,27 @@ EMOJIS_ENTREGADORES = {
     "Eduardo": "🧔🏻"       
 }
 
-# --- BANCO DE DADOS PERSISTENTE ---
-if "historico_global" not in st.session_state:
-    st.session_state["historico_global"] = []
+# --- FUNÇÕES DE ARQUIVO DIRETAS (SEM ERROS DE SINTAXE) ---
+def carregar_dados_txt():
+    if not os.path.exists("dados.txt"):
+        return []
+    linhas = []
+    with open("dados.txt", "r", encoding="utf-8") as f:
+        for linha in f:
+            partes = linha.strip().split(";")
+            if len(partes) == 6:
+                linhas.append(partes)
+    return linhas
 
+def salvar_linha_txt(data, hora, nome, status, pedido, destino):
+    with open("dados.txt", "a", encoding="utf-8") as f:
+        f.write(f"{data};{hora};{nome};{status};{pedido};{destino}\n")
+
+def resetar_dados_txt():
+    if os.path.exists("dados.txt"):
+        os.remove("dados.txt")
+
+# Inicializa as variáveis na sessão
 if "fila_global" not in st.session_state:
     st.session_state["fila_global"] = []
 
@@ -99,8 +115,8 @@ if eh_expedidor:
     st.sidebar.markdown("---")
     st.sidebar.subheader("⚙️ Configurações do Painel")
     if st.sidebar.button("🗑️ Resetar Tudo (Fila e Histórico)", use_container_width=True):
-        st.session_state["historico_global"] = []
         st.session_state["fila_global"] = []
+        resetar_dados_txt()
         st.rerun()
 else:
     if senha_digitada:
@@ -109,14 +125,15 @@ else:
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📋 Histórico do Dia")
-if st.session_state["historico_global"]:
-    df_relatorio = pd.DataFrame(st.session_state["historico_global"])
-    df_visualizacao = df_relatorio[["Data", "Horário", "Entregador", "Status", "Pedido", "Destino"]].iloc[::-1]
-    st.sidebar.dataframe(df_visualizacao, use_container_width=True, hide_index=True)
+
+registros_salvos = carregar_dados_txt()
+if registros_salvos:
+    df_visualizacao = pd.DataFrame(registros_salvos, columns=["Data", "Horário", "Entregador", "Status", "Pedido", "Destino"])
+    st.sidebar.dataframe(df_visualizacao.iloc[::-1], use_container_width=True, hide_index=True)
 else:
     st.sidebar.info("Nenhum registro histórico até o momento.")
 
-df_download = pd.DataFrame(st.session_state["historico_global"]) if st.session_state["historico_global"] else pd.DataFrame(columns=["Data", "Horário", "Entregador", "Status", "Pedido", "Destino"])
+df_download = pd.DataFrame(registros_salvos, columns=["Data", "Horário", "Entregador", "Status", "Pedido", "Destino"]) if registros_salvos else pd.DataFrame(columns=["Data", "Horário", "Entregador", "Status", "Pedido", "Destino"])
 csv = df_download.to_csv(index=False).encode('utf-8')
 st.sidebar.download_button("📥 Baixar Relatório (CSV)", data=csv, file_name="entregas.csv", mime="text/csv", use_container_width=True)
 
@@ -152,13 +169,11 @@ st.markdown("---")
 st.subheader("🏆 Ranking de Entregas do Dia")
 
 placar = {nome: 0 for nome in ENTREGADORES}
-for registro in st.session_state["historico_global"]:
-    if registro["Status"] == "Saída para Entrega":
-        entregador_nome = registro["Entregador"]
-        if entregador_nome in placar:
-            placar[entregador_nome] += 1
+for reg in registros_salvos:
+    if reg[3] == "Saída para Entrega":
+        if reg[2] in placar:
+            placar[reg[2]] += 1
 
-# Ordena o ranking com segurança matemática pelo número de viagens (índice 1)
 ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
 valores_viagens = [qtd for nome, qtd in ranking_ordenado]
 maior_viagem = max(valores_viagens) if valores_viagens and max(valores_viagens) > 0 else 1
@@ -184,12 +199,10 @@ st.markdown("---")
 # --- SEÇÃO DE COMANDOS ---
 if eh_expedidor:
     st.subheader("🛠️ Painel de Controle do Expedidor")
-    
     st.write("1. Escolha o Entregador:")
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
-        # A bolinha verde 🟢 acende se o entregador for exatamente o primeiro da fila
         esta_na_vez = False
         if len(st.session_state["fila_global"]) > 0:
             if st.session_state["fila_global"][0] == nome:
@@ -224,28 +237,22 @@ if eh_expedidor:
 
         if st.button(f"Confirmar Registro para {nome_selecionado}", type="primary", use_container_width=True, key=f"ok_{nome_selecionado}"):
             agora = datetime.now()
-            hora_formatada = agora.strftime("%H:%M:%S")
+            data_atual = agora.strftime("%d/%m/%Y")
+            hora_atual = agora.strftime("%H:%M:%S")
+            
+            val_pedido = num_pedido if num_pedido else "-"
+            val_destino = bairro_destino if bairro_destino else "-"
             
             if opcao == "Entrar na Fila (Chegada Inicial)":
                 if nome_selecionado not in st.session_state["fila_global"]:
                     st.session_state["fila_global"].append(nome_selecionado)
-                st.toast(f"📥 {nome_selecionado} entrou na fila da base.")
                 
             elif opcao == "Saída para Entrega":
                 if nome_selecionado in st.session_state["fila_global"]:
                     if st.session_state["fila_global"][0] != nome_selecionado:
                         st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem!", icon="🚨")
                     st.session_state["fila_global"].remove(nome_selecionado)
-                st.toast(f"🚀 {nome_selecionado} saiu para a rua.")
                     
             elif opcao == "Retorno da Entrega":
                 if nome_selecionado in st.session_state["fila_global"]:
                     st.session_state["fila_global"].remove(nome_selecionado)
-                st.session_state["fila_global"].append(nome_selecionado)
-                st.toast(f"📥 {nome_selecionado} retornou para o final da fila.")
-
-            # Gravação direta e linear simplificada do histórico
-            novo_registro = [
-                agora.strftime("%d/%m/%Y"),
-                hora_formatada,
-                nome_selecionado,
