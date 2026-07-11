@@ -179,7 +179,7 @@ for registro in st.session_state["historico_global"]:
         if entregador_nome in placar:
             placar[entregador_nome] += 1
 
-ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
+ranking_ordenado = sorted(placar.items(), key=lambda x: x, reverse=True)
 
 valores_viagens = [qtd for nome, qtd in ranking_ordenado]
 maior_viagem = max(valores_viagens) if valores_viagens and max(valores_viagens) > 0 else 1
@@ -220,7 +220,7 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
-        # CORREÇÃO DA BOLINHA VERDE: Verifica com segurança se o entregador atual é o primeiro da fila ativa na base
+        # CORREÇÃO DEFINITIVA DA BOLINHA VERDE: Compara o primeiro elemento da lista [0] com segurança
         esta_na_vez = False
         if len(st.session_state["fila_global"]) > 0:
             if st.session_state["fila_global"][0] == nome:
