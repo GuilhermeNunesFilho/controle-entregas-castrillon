@@ -257,14 +257,16 @@ if eh_expedidor:
             hora_formatada = agora.strftime("%H:%M:%S")
             salvar_historico = True
             
+            # Execução direta e limpa para evitar erros de espaços
             if opcao == "Entrar na Fila (Chegada Inicial)":
                 if nome_selecionado not in st.session_state["fila_global"]:
                     st.session_state["fila_global"].append(nome_selecionado)
-                    st.toast(f"📥 {nome_selecionado} iniciou o turno na base.")
                 salvar_historico = False
-            elif opcao == "Saída para Entrega":
+                
+            if opcao == "Saída para Entrega":
                 if nome_selecionado in st.session_state["fila_global"]:
                     st.session_state["fila_global"].remove(nome_selecionado)
-                st.toast(f"🚀 {nome_selecionado} saiu para a rua. Nome removido da fila da base!")
-            elif opcao == "Retorno da Entrega":
+                    
+            if opcao == "Retorno da Entrega":
                 if nome_selecionado in st.session_state["fila_global"]:
+                    st.session_state["fila_global"].remove(nome_selecionado)
