@@ -17,7 +17,6 @@ def obter_base64_imagem(caminho_arquivo):
 
 img_base64 = obter_base64_imagem("logo.png")
 
-# Aplica o fundo escuro ajustado e força os textos e botões a ficarem brancos
 if img_base64:
     st.markdown(f"""
         <style>
@@ -31,13 +30,9 @@ if img_base64:
         [data-testid="stHeader"] {{
             background: transparent;
         }}
-        
-        /* Força a cor branca em todos os textos comuns */
         h1, h2, h3, p, span, label, stMarkdown {{
             color: #ffffff !important;
         }}
-        
-        /* Estilização dos blocos da fila para ficarem visíveis no fundo escuro */
         [data-testid="stVerticalBlockBlock"] > div {{
             background-color: rgba(255, 255, 255, 0.1) !important;
             border: 1px solid rgba(255, 255, 255, 0.3) !important;
@@ -45,8 +40,6 @@ if img_base64:
             padding: 8px !important;
             margin-bottom: 5px !important;
         }}
-        
-        /* Força o texto de dentro dos botões a ficar BRANCO */
         button[data-testid="baseButton-secondary"] p {{
             color: #ffffff !important;
         }}
@@ -54,8 +47,6 @@ if img_base64:
             border: 1px solid rgba(255, 255, 255, 0.4) !important;
             background-color: rgba(255, 255, 255, 0.1) !important;
         }}
-        
-        /* Força a tabela de relatórios a ficar escura com letras brancas */
         div[data-testid="stDataFrame"] table {{
             background-color: #1e293b !important;
             color: #ffffff !important;
@@ -87,7 +78,6 @@ EMOJIS_ENTREGADORES = {
     "Eduardo": "🧔🏻"       
 }
 
-# --- BANCO DE DADOS GLOBAL COMPARTILHADO ---
 @st.cache_resource
 def iniciar_banco_dados():
     return {
@@ -97,7 +87,6 @@ def iniciar_banco_dados():
 
 banco = iniciar_banco_dados()
 
-# Sincroniza o banco global com a sessão atual do navegador
 if "historico_global" not in st.session_state:
     st.session_state["historico_global"] = banco["relatorio_entregas"]
 
@@ -107,7 +96,7 @@ if "fila_global" not in st.session_state:
 if "entregador_clicado" not in st.session_state:
     st.session_state.entregador_clicado = None
 
-# --- SIDEBAR: ÁREA DE ACESSO DO EXPEDIDOR COMPLETA ---
+# --- SIDEBAR ---
 st.sidebar.header("🔑 Área Restrita")
 senha_digitada = st.sidebar.text_input("Senha do Expedidor:", type="password", help="Digite a senha para liberar os comandos de lançamento.")
 
@@ -143,7 +132,7 @@ st.sidebar.download_button("📥 Baixar Relatório (CSV)", data=csv, file_name="
 
 st.markdown("---")
 
-# --- PAINEL VISUAL DA FILA DE ESPERA (PÚBLICO) ---
+# --- PAINEL VISUAL DA FILA ---
 st.subheader("⏱️ Próximos a Sair (Ordem da Fila)")
 
 if st.session_state["fila_global"]:
@@ -169,7 +158,7 @@ else:
 
 st.markdown("---")
 
-# --- PAINEL DE RANKING EM TEMPO REAL (PÚBLICO) ---
+# --- PAINEL DE RANKING ---
 st.subheader("🏆 Ranking de Entregas do Dia")
 
 placar = {nome: 0 for nome in ENTREGADORES}
@@ -180,7 +169,6 @@ for registro in st.session_state["historico_global"]:
             placar[entregador_nome] += 1
 
 ranking_ordenado = sorted(placar.items(), key=lambda x: x, reverse=True)
-
 valores_viagens = [qtd for nome, qtd in ranking_ordenado]
 maior_viagem = max(valores_viagens) if valores_viagens and max(valores_viagens) > 0 else 1
 
@@ -220,7 +208,7 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
-        # CORREÇÃO DEFINITIVA DA BOLINHA VERDE: Compara o primeiro elemento da lista [0] com segurança
+        # CORREÇÃO DEFINITIVA DA BOLINHA VERDE: Verifica de forma segura se a lista tem dados antes de ler o índice [0]
         esta_na_vez = False
         if len(st.session_state["fila_global"]) > 0:
             if st.session_state["fila_global"][0] == nome:
@@ -262,3 +250,12 @@ if eh_expedidor:
                     st.session_state["fila_global"].append(nome_selecionado)
                 st.toast(f"📥 {nome_selecionado} entrou na fila da base.")
                 
+            elif opcao == "Saída para Entrega":
+                if nome_selecionado in st.session_state["fila_global"]:
+                    st.session_state["fila_global"].remove(nome_selecionado)
+                st.toast(f"🚀 {nome_selecionado} saiu para a rua.")
+                    
+            elif opcao == "Retorno da Entrega":
+                if nome_selecionado in st.session_state["fila_global"]:
+                    st.session_state["fila_global"].remove(nome_selecionado)
+                st.session_state["fila_global"].append(nome_selecionado)
