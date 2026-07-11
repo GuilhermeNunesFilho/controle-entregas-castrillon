@@ -17,6 +17,7 @@ def obter_base64_imagem(caminho_arquivo):
 
 img_base64 = obter_base64_imagem("logo.png")
 
+# Aplica o fundo escuro ajustado e força os textos e botões a ficarem brancos
 if img_base64:
     st.markdown(f"""
         <style>
@@ -30,21 +31,41 @@ if img_base64:
         [data-testid="stHeader"] {{
             background: transparent;
         }}
+        
+        /* Força a cor branca em todos os textos comuns */
         h1, h2, h3, p, span, label, stMarkdown {{
             color: #ffffff !important;
         }}
+        
+        /* Estilização dos blocos da fila para ficarem visíveis no fundo escuro */
         [data-testid="stVerticalBlockBorderWrapper"] {{
             background-color: rgba(255, 255, 255, 0.1) !important;
             border: 1px solid rgba(255, 255, 255, 0.3) !important;
             border-radius: 8px !important;
             padding: 5px !important;
         }}
+        
+        /* Força o texto de dentro dos botões a ficar BRANCO */
         button[data-testid="baseButton-secondary"] p {{
             color: #ffffff !important;
         }}
         button[data-testid="baseButton-secondary"] {{
             border: 1px solid rgba(255, 255, 255, 0.4) !important;
             background-color: rgba(255, 255, 255, 0.1) !important;
+        }}
+        
+        /* CORREÇÃO VISUAL: Força a tabela de relatórios a ficar escura com letras brancas */
+        div[data-testid="stDataFrame"] table {{
+            background-color: #1e293b !important;
+            color: #ffffff !important;
+        }}
+        div[data-testid="stDataFrame"] th {{
+            background-color: #0f172a !important;
+            color: #ffffff !important;
+        }}
+        div[data-testid="stDataFrame"] td {{
+            color: #ffffff !important;
+            background-color: #1e293b !important;
         }}
         </style>
     """, unsafe_allow_html=True)
@@ -150,15 +171,14 @@ st.subheader("🏆 Ranking de Entregas do Dia")
 
 placar = {nome: 0 for nome in ENTREGADORES}
 for registro in st.session_state["historico_global"]:
-    # CORREÇÃO: Só conta ponto se o status for estritamente Saída para Entrega
     if registro["Status"] == "Saída para Entrega":
         entregador_nome = registro["Entregador"]
         if entregador_nome in placar:
             placar[entregador_nome] += 1
 
-# CORREÇÃO: Ordena de forma correta olhando o valor numérico de viagens (índice 1)
-ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
-maior_viagem = ranking_ordenado[0][1] if ranking_ordenado and ranking_ordenado[0][1] > 0 else 1
+ranking_ordenado = sorted(placar.items(), key=lambda x: x, reverse=True)
+valores_viagens = [qtd for nome, qtd in ranking_ordenado]
+maior_viagem = max(valores_viagens) if valores_viagens and max(valores_viagens) > 0 else 1
 
 col_rank1, col_rank2 = st.columns(2)
 with col_rank1:
@@ -182,13 +202,23 @@ st.markdown("---")
 if eh_expedidor:
     st.subheader("🛠️ Painel de Controle do Expedidor")
     
+    st.markdown("""
+        <style>
+        div.stButton > button p {
+            white-space: nowrap !important;
+            font-size: 14px !important;
+            font-weight: bold !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
     st.write("1. Escolha o Entregador:")
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
         esta_na_vez = False
         if len(st.session_state["fila_global"]) > 0:
-            if st.session_state["fila_global"][0] == nome:
+            if st.session_state["fila_global"] == nome:
                 esta_na_vez = True
                 
         label_botao = f"🟢 {nome}" if esta_na_vez else nome
@@ -221,21 +251,13 @@ if eh_expedidor:
         if st.button(f"Confirmar Registro para {nome_selecionado}", type="primary", use_container_width=True, key=f"ok_{nome_selecionado}"):
             agora = datetime.now()
             hora_formatada = agora.strftime("%H:%M:%S")
+            salvar_historico = True
             
             if opcao == "Entrar na Fila (Chegada Inicial)":
                 if nome_selecionado not in st.session_state["fila_global"]:
                     st.session_state["fila_global"].append(nome_selecionado)
-                # Cria o registro interno para salvar o estado na nuvem sem poluir o histórico visível
-                novo_item = {"Data": agora.strftime("%d/%m/%Y"), "Horário": hora_formatada, "Entregador": nome_selecionado, "Status": opcao, "Pedido": "-", "Destino": "-"}
-                st.session_state["historico_global"].append(novo_item)
+                salvar_historico = False
                 
             elif opcao == "Saída para Entrega":
                 if nome_selecionado in st.session_state["fila_global"]:
-                    st.session_state["fila_global"].remove(nome_selecionado)
-                novo_item = {"Data": agora.strftime("%d/%m/%Y"), "Horário": hora_formatada, "Entregador": nome_selecionado, "Status": opcao, "Pedido": num_pedido if num_pedido else "-", "Destino": bairro_destino if bairro_destino else "-"}
-                st.session_state["historico_global"].append(novo_item)
-                    
-            elif opcao == "Retorno da Entrega":
-                if nome_selecionado in st.session_state["fila_global"]:
-                    st.session_state["fila_global"].remove(nome_selecionado)
-                st.session_state["fila_global"].append(nome_selecion==ano) if nome_selecionado not in st.session_state["fila_global"] else st.session_state["fila_global"].append(nome_selecionado)
+                    if st.session_state["fila_global"] != nome_selecionado:
