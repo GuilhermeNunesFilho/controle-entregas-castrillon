@@ -53,6 +53,9 @@ if "historico_global" not in st.session_state:
 if "fila_global" not in st.session_state:
     st.session_state["fila_global"] = banco["fila_espera"]
 
+if "entregador_clicado" not in st.session_state:
+    st.session_state.entregador_clicado = None
+
 # --- SIDEBAR: ÁREA DE ACESSO DO EXPEDIDOR ---
 st.sidebar.header("🔑 Área Restrita")
 senha_digitada = st.sidebar.text_input("Senha do Expedidor:", type="password", help="Digite a senha para liberar os comandos de lançamento.")
@@ -85,7 +88,7 @@ if st.session_state["fila_global"]:
         emoji_perfil = EMOJIS_ENTREGADORES.get(nome, "🛵")
         
         with st.container(border=True):
-            col_pos, col_emo, col_nom = st.columns([2, 1, 4])
+            col_pos, col_emo, col_nom = st.columns()
             col_pos.markdown(f"**{posicao}**")
             col_emo.markdown(f"<h3 style='margin:0; padding:0;'>{emoji_perfil}</h3>", unsafe_allow_html=True)
             col_nom.markdown(f"### {nome}")
@@ -103,8 +106,8 @@ for registro in st.session_state["historico_global"]:
         if registro["Entregador"] in placar:
             placar[registro["Entregador"]] += 1
 
-ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
-maior_numero_entregas = ranking_ordenado[0][1] if ranking_ordenado and ranking_ordenado[0][1] > 0 else 1
+ranking_ordenado = sorted(placar.items(), key=lambda x: x, reverse=True)
+maior_numero_entregas = ranking_ordenado if ranking_ordenado and ranking_ordenado > 0 else 1
 
 col_rank1, col_rank2 = st.columns(2)
 with col_rank1:
@@ -128,24 +131,36 @@ st.markdown("---")
 if eh_expedidor:
     st.subheader("🛠️ Painel de Controle do Expedidor")
     
-    # Caixa de seleção limpa que resolve o problema de nomes cortados e cabe em qualquer tela
-    opcoes_select = ["-- Selecione um Entregador --"]
-    for nome in ENTREGADORES:
-        # Adiciona a marcação de bolinha verde se o entregador for o 1º da vez atualmente na base
-        if st.session_state["fila_global"] and st.session_state["fila_global"][0] == nome:
-            opcoes_select.append(f"🟢 {nome} (1º da Vez)")
-        else:
-            opcoes_select.append(nome)
-            
-    selecionado_bruto = st.selectbox("1. Escolha o Entregador para lançar:", opcoes_select)
+    # CSS injetado para forçar os botões a não quebrarem o texto e ficarem bem ajustados
+    st.markdown("""
+        <style>
+        div.stButton > button p {
+            white-space: nowrap !important;
+            font-size: 14px !important;
+            font-weight: bold !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
     
-    # Remove as marcações de texto para descobrir o nome real do entregador selecionado
-    nome_selecionado = selecionado_bruto.replace("🟢 ", "").replace(" (1º da Vez)", "") if selecionado_bruto != "-- Selecione um Entregador --" else None
+    st.write("1. Escolha o Entregador:")
+    colunas = st.columns(len(ENTREGADORES))
+
+    for i, nome in enumerate(ENTREGADORES):
+        # Verifica se ele é o 1º da vez atualmente para ganhar a sinalização de bolinha verde
+        esta_na_vez = (st.session_state["fila_global"] and st.session_state["fila_global"][0] == nome)
+        label_botao = f"🟢 {nome}" if esta_na_vez else nome
+        
+        if colunas[i].button(label_botao, use_container_width=True, key=f"btn_{nome}"):
+            st.session_state.entregador_clicado = nome
+            st.rerun()
+
+    nome_selecionado = st.session_state.entregador_clicado
 
     if nome_selecionado:
+        st.info(f"⚡ Entregador selecionado: **{nome_selecionado}**")
         st.write("2. Selecione a ação:")
         
-        # Define quais ações aparecem dinamicamente
+        # Define quais ações aparecem dinamicamente baseadas em onde o entregador está
         opcoes_acao = ["Saída para Entrega", "Retorno da Entrega"]
         if nome_selecionado not in st.session_state["fila_global"]:
             opcoes_acao.insert(0, "Entrar na Fila (Chegada Inicial)")
@@ -172,7 +187,6 @@ if eh_expedidor:
                 salvar_historico = False
                 
             elif opcao == "Saída para Entrega":
-                # Tira ele da fila pois ele saiu para a rua entregar
                 if nome_selecionado in st.session_state["fila_global"]:
                     if st.session_state["fila_global"][0] != nome_selecionado:
                         st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem!", icon="🚨")
@@ -181,7 +195,7 @@ if eh_expedidor:
                     
             elif opcao == "Retorno da Entrega":
                 # LÓGICA DE QUEM CHEGA PRIMEIRO ROUBA A VEZ:
-                # O entregador terminou a corrida e retornou. Ele entra no FINAL da fila dos que estão na base.
+                # O entregador retornou da rua, portanto entra na base no FINAL da fila dos disponíveis.
                 if nome_selecionado in st.session_state["fila_global"]:
                     st.session_state["fila_global"].remove(nome_selecionado)
                 st.session_state["fila_global"].append(nome_selecionado)
@@ -201,6 +215,8 @@ if eh_expedidor:
             # Sincroniza o banco na nuvem
             banco["relatorio_entregas"] = st.session_state["historico_global"]
             banco["fila_espera"] = st.session_state["fila_global"]
+            
+            st.session_state.entregador_clicado = None
             st.rerun()
             
     st.markdown("---")
@@ -232,6 +248,6 @@ if st.session_state["historico_global"]:
             st.session_state["fila_global"] = []
             banco["relatorio_entregas"] = []
             banco["fila_espera"] = []
+            st.session_state.entregador_clicado = None
             st.rerun()
 else:
-    st.info("Nenhum registro histórico até o momento.")
