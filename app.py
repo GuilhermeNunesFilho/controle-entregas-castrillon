@@ -38,11 +38,12 @@ if img_base64:
         }}
         
         /* Estilização dos blocos da fila para ficarem visíveis no fundo escuro */
-        [data-testid="stVerticalBlockBorderWrapper"] {{
+        [data-testid="stVerticalBlockBlock"] > div {{
             background-color: rgba(255, 255, 255, 0.1) !important;
             border: 1px solid rgba(255, 255, 255, 0.3) !important;
             border-radius: 8px !important;
-            padding: 5px !important;
+            padding: 8px !important;
+            margin-bottom: 5px !important;
         }}
         
         /* Força o texto de dentro dos botões a ficar BRANCO */
@@ -54,7 +55,7 @@ if img_base64:
             background-color: rgba(255, 255, 255, 0.1) !important;
         }}
         
-        /* CORREÇÃO VISUAL: Força a tabela de relatórios a ficar escura com letras brancas */
+        /* Força a tabela de relatórios a ficar escura com letras brancas */
         div[data-testid="stDataFrame"] table {{
             background-color: #1e293b !important;
             color: #ffffff !important;
@@ -180,7 +181,6 @@ for registro in st.session_state["historico_global"]:
 
 ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
 
-# Coleta os valores numéricos com segurança para calibrar o gráfico
 valores_viagens = [qtd for nome, qtd in ranking_ordenado]
 maior_viagem = max(valores_viagens) if valores_viagens and max(valores_viagens) > 0 else 1
 
@@ -220,6 +220,7 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
+        # CORREÇÃO DA BOLINHA VERDE: Verifica com segurança se o entregador atual é o primeiro da fila ativa na base
         esta_na_vez = False
         if len(st.session_state["fila_global"]) > 0:
             if st.session_state["fila_global"][0] == nome:
@@ -255,9 +256,9 @@ if eh_expedidor:
         if st.button(f"Confirmar Registro para {nome_selecionado}", type="primary", use_container_width=True, key=f"ok_{nome_selecionado}"):
             agora = datetime.now()
             hora_formatada = agora.strftime("%H:%M:%S")
-            salvar_historico = True
             
-            # CORREÇÃO DEFINITIVA: Processamento linear e simples sem aninhamentos que geram erros de recuo
             if opcao == "Entrar na Fila (Chegada Inicial)":
                 if nome_selecionado not in st.session_state["fila_global"]:
                     st.session_state["fila_global"].append(nome_selecionado)
+                st.toast(f"📥 {nome_selecionado} entrou na fila da base.")
+                
