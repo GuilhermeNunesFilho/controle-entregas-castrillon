@@ -25,23 +25,24 @@ ENTREGADORES = [
     "Eduardo"
 ]
 
-# Banco de dados de avatares com base nas características da equipe
-FOTOS_ENTREGADORES = {
-    "Guilherme": "https://dicebear.com", 
-    "João Carlos": "https://dicebear.com", 
-    "Keyper": "https://dicebear.com", 
-    "Nisley": "https://dicebear.com", 
-    "Anderson": "https://dicebear.com", 
-    "Hudson": "https://dicebear.com", 
-    "Eduardo": "https://dicebear.com" 
+# Dicionário de Emojis personalizados para cada um
+EMOJIS_ENTREGADORES = {
+    "Guilherme": "🥷🏾",    # Moreno Forte
+    "João Carlos": "🧑🏾‍🦱", # Moreno Cheinho
+    "Keyper": "👦🏼",      # Gordinho
+    "Nisley": "👨‍🦲",      # Meio Calvo
+    "Anderson": "🧑🏻",    # Narizudo/Padrão
+    "Hudson": "🧔🏽",      # Moicano e Barba Baixa
+    "Eduardo": "🧔🏻"       # Branco, Magro e Barbudo
 }
 
-# --- BANCO DE DADOS COMPARTILHADO ---
+# --- BANCO DE DADOS COMPARTILHADO NA NUVEM ---
 @st.cache_resource
 def iniciar_banco_dados():
+    # A fila inicial já começa com todos os entregadores disponíveis organizados
     return {
         "relatorio_entregas": [],
-        "fila_espera": []
+        "fila_espera": list(ENTREGADORES)
     }
 
 banco = iniciar_banco_dados()
@@ -65,16 +66,16 @@ else:
 st.markdown("---")
 
 # --- PAINEL VISUAL DA FILA DE ESPERA (PÚBLICO) ---
-st.subheader("⏱️ Próximos a Sair (Fila)")
+st.subheader("⏱️ Próximos a Sair (Ordem da Fila)")
 
 if banco["fila_espera"]:
     card_styles = """
     <style>
     .fila-container { display: flex; flex-wrap: wrap; gap: 12px; padding: 10px 0; }
-    .entregador-card { display: flex; align-items: center; background-color: #f0f2f6; border-radius: 8px; padding: 6px 14px; border: 1px solid #dcdfe6; margin-bottom: 5px; }
-    .badge-posicao { font-weight: bold; font-size: 13px; margin-right: 8px; color: #555; }
-    .avatar-img { width: 32px; height: 32px; border-radius: 50%; margin-right: 8px; background-color: #fff; padding: 2px; }
-    .nome-texto { font-weight: 600; color: #31333F; font-size: 14px; }
+    .entregador-card { display: flex; align-items: center; background-color: #f0f2f6; border-radius: 8px; padding: 10px 18px; border: 1px solid #dcdfe6; margin-bottom: 5px; }
+    .badge-posicao { font-weight: bold; font-size: 14px; margin-right: 8px; color: #333; }
+    .avatar-emoji { font-size: 22px; margin-right: 8px; }
+    .nome-texto { font-weight: 600; color: #31333F; font-size: 15px; }
     </style>
     """
     st.markdown(card_styles, unsafe_allow_html=True)
@@ -82,7 +83,7 @@ if banco["fila_espera"]:
     html_fila = '<div class="fila-container">'
     for idx, nome in enumerate(banco["fila_espera"]):
         if idx == 0:
-            posicao = "🥇 1º"
+            posicao = "🥇 1º da Vez"
         elif idx == 1:
             posicao = "🥈 2º"
         elif idx == 2:
@@ -90,18 +91,18 @@ if banco["fila_espera"]:
         else:
             posicao = f"🛵 {idx + 1}º"
             
-        foto_url = FOTOS_ENTREGADORES.get(nome, "https://dicebear.com")
+        emoji_perfil = EMOJIS_ENTREGADORES.get(nome, "🛵")
         html_fila += f"""
         <div class="entregador-card">
             <span class="badge-posicao">{posicao}:</span>
-            <img class="avatar-img" src="{foto_url}">
+            <span class="avatar-emoji">{emoji_perfil}</span>
             <span class="nome-texto">{nome}</span>
         </div>
         """
     html_fila += '</div>'
     st.markdown(html_fila, unsafe_allow_html=True)
 else:
-    st.warning("⚠️ Nenhum entregador na base/fila no momento.")
+    st.warning("⚠️ Nenhum entregador na fila no momento.")
 
 st.markdown("---")
 
@@ -142,7 +143,9 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
-        label_botao = f"🟢 {nome}" if nome in banco["fila_espera"] else nome
+        # Mostra uma bolinha verde se ele estiver atualmente no topo da fila (1º da vez)
+        esta_na_vez = (banco["fila_espera"] and banco["fila_espera"][0] == nome)
+        label_botao = f"🟢 {nome}" if esta_na_vez else nome
         if colunas[i].button(label_botao, use_container_width=True, key=f"btn_{nome}"):
             st.session_state.entregador_clicado = nome
             st.rerun()
@@ -153,6 +156,7 @@ if eh_expedidor:
         st.info(f"⚡ Entregador selecionado: **{nome_selecionado}**")
         st.write("2. Selecione a ação:")
         
+        # Sugere dinamicamente a ação correta com base na posição dele
         index_padrao = 0 if nome_selecionado in banco["fila_espera"] else 1
         opcao = st.radio("Ação:", ["Saída para Entrega", "Retorno da Entrega"], index=index_padrao, horizontal=True, label_visibility="collapsed")
         
@@ -168,23 +172,28 @@ if eh_expedidor:
             agora = datetime.now()
             hora_formatada = agora.strftime("%H:%M:%S")
             
-            if opcao == "Retorno da Entrega":
-                # Entra no FINAL da fila se já não estiver nela
-                if nome_selecionado not in banco["fila_espera"]:
-                    banco["fila_espera"].append(nome_selecionado)
-                    st.toast(f"📥 {nome_selecionado} voltou da entrega e entrou no final da fila!")
-                else:
-                    st.toast(f"⚠️ {nome_selecionado} já está na fila de espera!")
-                    
-            elif opcao == "Saída para Entrega":
+            if opcao == "Saída para Entrega":
                 if nome_selecionado in banco["fila_espera"]:
-                    # Alerta se o expedidor estiver tirando alguém fora da vez (que não seja o 1º)
+                    # Se não for o primeiro da vez, avisa, mas permite a saída
                     if banco["fila_espera"][0] != nome_selecionado:
                         st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem da vez!", icon="🚨")
                     banco["fila_espera"].remove(nome_selecionado)
-                    st.toast(f"🚀 {nome_selecionado} saiu para entrega!")
-                else:
-                    st.toast(f"🚀 {nome_selecionado} saiu para entrega (não estava na fila).")
+                
+                # Joga o entregador AUTOMATICAMENTE para o final da fila (fim da linha)
+                if nome_selecionado not in banco["fila_espera"]:
+                    banco["fila_espera"].append(nome_selecionado)
+                st.toast(f"🚀 {nome_selecionado} saiu e seu nome foi para o final da fila!")
+                    
+            elif opcao == "Retorno da Entrega":
+                # LÓGICA DE QUEM CHEGA PRIMEIRO PASSA A FRENTE:
+                # Se ele já estava na rua (ou no fim da fila) e clicou em retornar, ele é reposicionado 
+                # na frente de quem ainda não voltou ou de quem clicar depois dele.
+                if nome_selecionado in banco["fila_espera"]:
+                    banco["fila_espera"].remove(nome_selecionado)
+                
+                # Remove do fim e traz para a última posição ativa dos que já estão na base esperando
+                banco["fila_espera"].append(nome_selecionado)
+                st.toast(f"📥 {nome_selecionado} voltou! Posição atualizada na fila por ordem de chegada.")
 
             # Salva no histórico do dia
             novo_item = {
@@ -226,7 +235,8 @@ if banco["relatorio_entregas"]:
     if eh_expedidor:
         if col_limpar.button("🗑️ Resetar Tudo (Fila e Histórico)", use_container_width=True):
             banco["relatorio_entregas"] = []
-            banco["fila_espera"] = []
+            # Ao resetar, reconstrói a fila inicial completa
+            banco["fila_espera"] = list(ENTREGADORES)
             st.session_state.entregador_clicado = None
             st.rerun()
 else:
