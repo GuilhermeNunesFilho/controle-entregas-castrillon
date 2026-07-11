@@ -49,6 +49,8 @@ if img_base64:
         div.stForm {{
             background-color: rgba(255, 255, 255, 0.05) !important;
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            padding: 15px !important;
+            border-radius: 8px !important;
         }}
         </style>
     """, unsafe_allow_html=True)
@@ -204,6 +206,7 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
+        # CORREÇÃO DA BOLINHA VERDE: Ela verifica estritamente se o entregador atual é o primeiro da fila ativa
         esta_na_vez = False
         if len(st.session_state["fila_global"]) > 0:
             if st.session_state["fila_global"][0] == nome:
@@ -218,52 +221,45 @@ if eh_expedidor:
     nome_selecionado = st.session_state.entregador_clicado
 
     if nome_selecionado:
-        st.info(f"⚡ Entregador selecionado: **{nome_selecionado}**")
-        st.write("2. Selecione a ação:")
-        
-        if nome_selecionado in st.session_state["fila_global"]:
-            opcoes_acao = ["Saída para Entrega"]
-        else:
-            opcoes_acao = ["Entrar na Fila (Chegada Inicial)", "Retorno da Entrega"]
+        # IMPLEMENTAÇÃO DO FORMULÁRIO: Garante resposta imediata no primeiro clique
+        with st.form(key=f"form_{nome_selecionado}"):
+            st.info(f"⚡ Entregador selecionado: **{nome_selecionado}**")
+            st.write("2. Selecione a ação:")
             
-        opcao = st.radio("Ação:", opcoes_acao, horizontal=True, key=f"radio_{nome_selecionado}", label_visibility="collapsed")
-        
-        num_pedido = ""
-        bairro_destino = ""
-        if opcao == "Saída para Entrega":
+            if nome_selecionado in st.session_state["fila_global"]:
+                opcoes_acao = ["Saída para Entrega"]
+            else:
+                opcoes_acao = ["Entrar na Fila (Chegada Inicial)", "Retorno da Entrega"]
+                
+            opcao = st.radio("Ação:", opcoes_acao, horizontal=True, key=f"radio_{nome_selecionado}", label_visibility="collapsed")
+            
             st.write("3. Informações da Entrega (Opcional):")
             col_ped, col_bai = st.columns(2)
             num_pedido = col_ped.text_input("Nº do Pedido / Nota:", placeholder="Ex: 1542", key=f"ped_{nome_selecionado}")
             bairro_destino = col_bai.text_input("Bairro / Destino:", placeholder="Ex: Centro", key=f"bai_{nome_selecionado}")
-
-        if st.button(f"Confirmar Registro para {nome_selecionado}", type="primary", use_container_width=True, key=f"conf_{nome_selecionado}"):
-            agora = datetime.now()
-            hora_formatada = agora.strftime("%H:%M:%S")
-            salvar_historico = True
             
-            if opcao == "Entrar na Fila (Chegada Inicial)":
-                if nome_selecionado not in st.session_state["fila_global"]:
-                    st.session_state["fila_global"].append(nome_selecionado)
-                salvar_historico = False
+            botao_confirmar = st.form_submit_button(f"Confirmar Registro para {nome_selecionado}", type="primary", use_container_width=True)
+            
+            if botao_confirmar:
+                agora = datetime.now()
+                hora_formatada = agora.strftime("%H:%M:%S")
+                salvar_historico = True
                 
-            elif opcao == "Saída para Entrega":
-                if nome_selecionado in st.session_state["fila_global"]:
-                    st.session_state["fila_global"].remove(nome_selecionado)
+                if opcao == "Entrar na Fila (Chegada Inicial)":
+                    if nome_selecionado not in st.session_state["fila_global"]:
+                        st.session_state["fila_global"].append(nome_selecionado)
+                    salvar_historico = False
                     
-            elif opcao == "Retorno da Entrega":
-                if nome_selecionado in st.session_state["fila_global"]:
-                    st.session_state["fila_global"].remove(nome_selecionado)
-                st.session_state["fila_global"].append(nome_selecionado)
+                elif opcao == "Saída para Entrega":
+                    if nome_selecionado in st.session_state["fila_global"]:
+                        st.session_state["fila_global"].remove(nome_selecionado)
+                        
+                elif opcao == "Retorno da Entrega":
+                    if nome_selecionado in st.session_state["fila_global"]:
+                        st.session_state["fila_global"].remove(nome_selecionado)
+                    st.session_state["fila_global"].append(nome_selecionado)
 
-            if salvar_historico:
-                novo_item = {
-                    "Data": agora.strftime("%d/%m/%Y"),
-                    "Horário": hora_formatada,
-                    "Entregador": nome_selecionado,
-                    "Status": opcao,
-                    "Pedido": num_pedido if num_pedido else "-",
-                    "Destino": bairro_destino if bairro_destino else "-"
-                }
-                st.session_state["historico_global"].append(novo_item)
-            
-            banco["relatorio_entregas"] = st.session_state["historico_global"]
+                if salvar_historico:
+                    novo_item = {
+                        "Data": agora.strftime("%d/%m/%Y"),
+                        "Horário": hora_formatada,
