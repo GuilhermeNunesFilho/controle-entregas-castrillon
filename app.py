@@ -1,32 +1,45 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import os
+import base64
 
 # Configuração visual da página
 st.set_page_config(page_title="Castrillon Entregas", page_icon="🛵", layout="centered")
 
-# --- TRATAMENTO DO FUNDO: IMAGEM DE BACKGROUND PERSONALIZADA ---
-st.markdown("""
-    <style>
-    [data-testid="stAppViewContainer"] {
-        background-image: linear-gradient(rgba(14, 21, 37, 0.85), rgba(14, 21, 37, 0.85)), url("https://githubusercontent.com");
-        background-size: contain;
-        background-position: center;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
-    }
-    [data-testid="stHeader"] {
-        background: transparent;
-    }
-    h1, h2, h3, p, span, stMarkdown {
-        color: #ffffff !important;
-    }
-    div.stForm {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# --- CONVERTE A IMAGEM LOCAL PARA COLOCAR NO FUNDO COM SEGURANÇA ---
+def obter_base64_imagem(caminho_arquivo):
+    if os.path.exists(caminho_arquivo):
+        with open(caminho_arquivo, "rb") as f:
+            dados = f.read()
+        return base64.b64encode(dados).decode()
+    return ""
+
+img_base64 = obter_base64_imagem("logo.png")
+
+# Aplica o fundo escuro com a logo centralizada sem travar
+if img_base64:
+    st.markdown(f"""
+        <style>
+        [data-testid="stAppViewContainer"] {{
+            background-image: linear-gradient(rgba(14, 21, 37, 0.9), rgba(14, 21, 37, 0.9)), url("data:image/png;base64,{img_base64}");
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }}
+        [data-testid="stHeader"] {{
+            background: transparent;
+        }}
+        h1, h2, h3, p, span, stMarkdown {{
+            color: #ffffff !important;
+        }}
+        div.stForm {{
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }}
+        </style>
+    """, unsafe_allow_html=True)
 
 st.title("🛵 Castrillon Entregas & Controle de Fila")
 
@@ -127,10 +140,11 @@ for registro in st.session_state["historico_global"]:
             placar[entregador_nome] += 1
 
 # Ordena o ranking por maior número de viagens
-ranking_ordenado = sorted(placar.items(), key=lambda x: x, reverse=True)
+ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
 
-# Define o teto máximo das barras de progresso de forma segura
-maior_viagem = ranking_ordenado if ranking_ordenado and ranking_ordenado > 0 else 1
+# CORREÇÃO DEFINITIVA: Pega o maior valor de viagens usando max() com segurança
+valores_viagens = [qtd for nome, qtd in ranking_ordenado]
+maior_viagem = max(valores_viagens) if valores_viagens and max(valores_viagens) > 0 else 1
 
 col_rank1, col_rank2 = st.columns(2)
 with col_rank1:
@@ -170,7 +184,7 @@ if eh_expedidor:
 
     for i, nome in enumerate(ENTREGADORES):
         esta_na_vez = False
-        if st.session_state["fila_global"] and st.session_state["fila_global"] == nome:
+        if st.session_state["fila_global"] and st.session_state["fila_global"][0] == nome:
             esta_na_vez = True
                 
         label_botao = f"🟢 {nome}" if esta_na_vez else nome
@@ -213,6 +227,8 @@ if eh_expedidor:
                 
             elif opcao == "Saída para Entrega":
                 if nome_selecionado in st.session_state["fila_global"]:
+                    if st.session_state["fila_global"][0] != nome_selecionado:
+                        st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem!", icon="🚨")
                     st.session_state["fila_global"].remove(nome_selecionado)
                 st.toast(f"🚀 {nome_selecionado} saiu para a rua. Nome removido da fila da base!")
                     
@@ -253,14 +269,3 @@ if st.session_state["historico_global"]:
         elif val == "Retorno da Entrega": return 'background-color: #dc3545; color: white; font-weight: bold;'
         return ''
 
-    df_relatorio = df_relatorio[["Data", "Horário", "Entregador", "Status", "Pedido", "Destino"]]
-    df_estilizado = df_relatorio.iloc[::-1].style.map(estilizar_status, subset=['Status'])
-    st.dataframe(df_estilizado, use_container_width=True, hide_index=True)
-    
-    col_csv, col_limpar = st.columns(2)
-    csv = df_relatorio.to_csv(index=False).encode('utf-8')
-    col_csv.download_button("📥 Baixar Relatório (CSV)", data=csv, file_name="entregas.csv", mime="text/csv", use_container_width=True)
-    
-    if eh_expedidor:
-        if col_limpar.button("🗑️ Resetar Tudo (Fila e Histórico)", use_container_width=True):
-            st.session_state["historico_global"] = []
