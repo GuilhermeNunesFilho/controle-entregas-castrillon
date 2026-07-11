@@ -221,9 +221,11 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
+        # CORREÇÃO DA BOLINHA VERDE: Ela olha se a lista tem itens e se o primeiro item é igual ao nome atual
         esta_na_vez = False
-        if st.session_state["fila_global"] and st.session_state["fila_global"] == nome:
-            esta_na_vez = True
+        if len(st.session_state["fila_global"]) > 0:
+            if st.session_state["fila_global"][0] == nome:
+                esta_na_vez = True
                 
         label_botao = f"🟢 {nome}" if esta_na_vez else nome
         
@@ -237,6 +239,7 @@ if eh_expedidor:
         st.info(f"⚡ Entregador selecionado: **{nome_selecionado}**")
         st.write("2. Selecione a ação:")
         
+        # CORREÇÃO DA LÓGICA DAS AÇÕES: Se ele está na lista da fila, só pode sair. Se não está, pode entrar ou retornar.
         if nome_selecionado in st.session_state["fila_global"]:
             opcoes_acao = ["Saída para Entrega"]
         else:
@@ -257,7 +260,6 @@ if eh_expedidor:
             hora_formatada = agora.strftime("%H:%M:%S")
             salvar_historico = True
             
-            # Execução direta e limpa para evitar erros de espaços
             if opcao == "Entrar na Fila (Chegada Inicial)":
                 if nome_selecionado not in st.session_state["fila_global"]:
                     st.session_state["fila_global"].append(nome_selecionado)
@@ -267,6 +269,3 @@ if eh_expedidor:
                 if nome_selecionado in st.session_state["fila_global"]:
                     st.session_state["fila_global"].remove(nome_selecionado)
                     
-            if opcao == "Retorno da Entrega":
-                if nome_selecionado in st.session_state["fila_global"]:
-                    st.session_state["fila_global"].remove(nome_selecionado)
