@@ -25,9 +25,9 @@ ENTREGADORES = [
     "Eduardo"
 ]
 
-# Dicionário de Emojis personalizados para cada um
+# Dicionário de Emojis ajustado (Guilherme com emoji seguro e compatível)
 EMOJIS_ENTREGADORES = {
-    "Guilherme": "🥷🏾",    # Moreno Forte
+    "Guilherme": "🧑🏾",    # Moreno Forte (Emoji compatível)
     "João Carlos": "🧑🏾‍🦱", # Moreno Cheinho
     "Keyper": "👦🏼",      # Gordinho
     "Nisley": "👨‍🦲",      # Meio Calvo
@@ -68,7 +68,6 @@ st.markdown("---")
 st.subheader("⏱️ Próximos a Sair (Ordem da Fila)")
 
 if banco["fila_espera"]:
-    # Exibição nativa sem HTML para evitar que o código quebre na tela
     for idx, nome in enumerate(banco["fila_espera"]):
         if idx == 0:
             posicao = "🥇 1º da Vez"
@@ -81,9 +80,8 @@ if banco["fila_espera"]:
             
         emoji_perfil = EMOJIS_ENTREGADORES.get(nome, "🛵")
         
-        # Cria uma caixinha nativa organizada para cada entregador
         with st.container(border=True):
-            col_pos, col_emo, col_nom = st.columns([2, 1, 5])
+            col_pos, col_emo, col_nom = st.columns([2, 1, 4])
             col_pos.markdown(f"**{posicao}**")
             col_emo.markdown(f"<h3 style='margin:0; padding:0;'>{emoji_perfil}</h3>", unsafe_allow_html=True)
             col_nom.markdown(f"### {nome}")
@@ -162,13 +160,11 @@ if eh_expedidor:
                         st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem da vez!", icon="🚨")
                     banco["fila_espera"].remove(nome_selecionado)
                 
-                # Regra: ao sair ele vai AUTOMATICAMENTE para a última posição da fila rotativa
                 if nome_selecionado not in banco["fila_espera"]:
                     banco["fila_espera"].append(nome_selecionado)
                 st.toast(f"🚀 {nome_selecionado} saiu! Seu nome foi para o final da fila rotativa.")
                     
             elif opcao == "Retorno da Entrega":
-                # Lógica: quem chega primeiro da rua é reposicionado na frente na fila de espera
                 if nome_selecionado in banco["fila_espera"]:
                     banco["fila_espera"].remove(nome_selecionado)
                 banco["fila_espera"].append(nome_selecionado)
