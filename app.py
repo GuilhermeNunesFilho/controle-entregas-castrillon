@@ -63,7 +63,7 @@ senha_digitada = st.sidebar.text_input("Senha do Expedidor:", type="password", h
 eh_expedidor = (senha_digitada == SENHA_EXPEDIDOR)
 
 if eh_expedidor:
-    st.sidebar.success("🔓 Modo Expedidor Ativo!")
+    st.sidebar.success("🔓 Modo Expedidor Active!")
 else:
     if senha_digitada:
         st.sidebar.error("❌ Senha Incorreta")
@@ -88,7 +88,8 @@ if st.session_state["fila_global"]:
         emoji_perfil = EMOJIS_ENTREGADORES.get(nome, "🛵")
         
         with st.container(border=True):
-            col_pos, col_emo, col_nom = st.columns()
+            # CORREÇÃO: Definido explicitamente 3 colunas para o layout
+            col_pos, col_emo, col_nom = st.columns(3)
             col_pos.markdown(f"**{posicao}**")
             col_emo.markdown(f"<h3 style='margin:0; padding:0;'>{emoji_perfil}</h3>", unsafe_allow_html=True)
             col_nom.markdown(f"### {nome}")
@@ -106,8 +107,8 @@ for registro in st.session_state["historico_global"]:
         if registro["Entregador"] in placar:
             placar[registro["Entregador"]] += 1
 
-ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
-maior_numero_entregas = ranking_ordenado[0][1] if ranking_ordenado and ranking_ordenado[0][1] > 0 else 1
+ranking_ordenado = sorted(placar.items(), key=lambda x: x, reverse=True)
+maior_numero_entregas = ranking_ordenado if ranking_ordenado and ranking_ordenado > 0 else 1
 
 col_rank1, col_rank2 = st.columns(2)
 with col_rank1:
@@ -145,7 +146,12 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
-        esta_na_vez = (st.session_state["fila_global"] and st.session_state["fila_global"][0] == nome)
+        # Verifica se a fila possui elementos e se o primeiro elemento é o entregador atual
+        esta_na_vez = False
+        if st.session_state["fila_global"]:
+            if st.session_state["fila_global"][0] == nome:
+                esta_na_vez = True
+                
         label_botao = f"🟢 {nome}" if esta_na_vez else nome
         
         if colunas[i].button(label_botao, use_container_width=True, key=f"btn_{nome}"):
