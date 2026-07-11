@@ -14,10 +14,10 @@ except:
 # 1. DEFINIÇÃO DA SENHA DO EXPEDIDOR
 SENHA_EXPEDIDOR = "castrillon2026"
 
-# 2. LISTA DE ENTREGADORES OFICIAIS
+# 2. LISTA DE ENTREGADORES OFICIAIS (Nome alterado para João apenas)
 ENTREGADORES = [
     "Guilherme", 
-    "João Carlos", 
+    "João", 
     "Keyper", 
     "Nisley", 
     "Anderson", 
@@ -25,10 +25,10 @@ ENTREGADORES = [
     "Eduardo"
 ]
 
-# Dicionário de Emojis ajustado (Todos 100% seguros e compatíveis)
+# Dicionário de Emojis ajustado
 EMOJIS_ENTREGADORES = {
     "Guilherme": "🧑🏾",    
-    "João Carlos": "👦🏾", 
+    "João": "👦🏾", 
     "Keyper": "👦🏼",      
     "Nisley": "👨‍🦲",      
     "Anderson": "🧑🏻",    
@@ -103,13 +103,17 @@ st.subheader("🏆 Ranking de Entregas do Dia")
 placar = {nome: 0 for nome in ENTREGADORES}
 for registro in st.session_state["historico_global"]:
     if registro["Status"] == "Saída para Entrega":
-        if registro["Entregador"] in placar:
-            placar[registro["Entregador"]] += 1
+        entregador_nome = registro["Entregador"]
+        # Converte registros antigos de João Carlos para João se houver
+        if entregador_nome == "João Carlos":
+            entregador_nome = "João"
+        if entregador_nome in placar:
+            placar[entregador_nome] += 1
 
 # Ordena o ranking por quantidade de entregas
 ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
 
-# CORREÇÃO: Pega a maior quantidade de entregas da lista com segurança
+# Pega o maior número de viagens com segurança para a barra de progresso
 maior_numero_entregas = ranking_ordenado[0][1] if ranking_ordenado and ranking_ordenado[0][1] > 0 else 1
 
 col_rank1, col_rank2 = st.columns(2)
