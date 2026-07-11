@@ -14,7 +14,7 @@ except:
 # 1. DEFINIÇÃO DA SENHA DO EXPEDIDOR
 SENHA_EXPEDIDOR = "castrillon2026"
 
-# 2. LISTA DE ENTREGADORES OFICIAIS (Nome alterado para João apenas)
+# 2. LISTA DE ENTREGADORES OFICIAIS
 ENTREGADORES = [
     "Guilherme", 
     "João", 
@@ -93,7 +93,7 @@ if st.session_state["fila_global"]:
             col_emo.markdown(f"<h3 style='margin:0; padding:0;'>{emoji_perfil}</h3>", unsafe_allow_html=True)
             col_nom.markdown(f"### {nome}")
 else:
-    st.info("⏱️ A fila está vazia. O expedidor irá adicionar os entregadores conforme eles chegarem na empresa.")
+    st.info("⏱️ Todos os entregadores estão na rua ou a fila está vazia. Aguardando retornos...")
 
 st.markdown("---")
 
@@ -104,17 +104,14 @@ placar = {nome: 0 for nome in ENTREGADORES}
 for registro in st.session_state["historico_global"]:
     if registro["Status"] == "Saída para Entrega":
         entregador_nome = registro["Entregador"]
-        # Converte registros antigos de João Carlos para João se houver
-        if entregador_nome == "João Carlos":
-            entregador_nome = "João"
         if entregador_nome in placar:
             placar[entregador_nome] += 1
 
-# Ordena o ranking por quantidade de entregas
+# Ordena o ranking por maior número de viagens
 ranking_ordenado = sorted(placar.items(), key=lambda x: x[1], reverse=True)
 
-# Pega o maior número de viagens com segurança para a barra de progresso
-maior_numero_entregas = ranking_ordenado[0][1] if ranking_ordenado and ranking_ordenado[0][1] > 0 else 1
+# Define o teto máximo das barras de progresso de forma segura
+maior_viagem = ranking_ordenado[0][1] if ranking_ordenado and ranking_ordenado[0][1] > 0 else 1
 
 col_rank1, col_rank2 = st.columns(2)
 with col_rank1:
@@ -129,7 +126,7 @@ with col_rank1:
 
 with col_rank2:
     for nome, qtd in ranking_ordenado:
-        progresso = float(qtd / maior_numero_entregas)
+        progresso = float(qtd / maior_viagem)
         st.progress(progresso, text=f"{nome}: {qtd}")
 
 st.markdown("---")
@@ -152,10 +149,10 @@ if eh_expedidor:
     colunas = st.columns(len(ENTREGADORES))
 
     for i, nome in enumerate(ENTREGADORES):
+        # A bolinha verde SÓ APARECE se o entregador estiver de fato no topo da fila física na base
         esta_na_vez = False
-        if st.session_state["fila_global"]:
-            if st.session_state["fila_global"][0] == nome:
-                esta_na_vez = True
+        if st.session_state["fila_global"] and st.session_state["fila_global"][0] == nome:
+            esta_na_vez = True
                 
         label_botao = f"🟢 {nome}" if esta_na_vez else nome
         
@@ -169,9 +166,11 @@ if eh_expedidor:
         st.info(f"⚡ Entregador selecionado: **{nome_selecionado}**")
         st.write("2. Selecione a ação:")
         
-        opcoes_acao = ["Saída para Entrega", "Retorno da Entrega"]
-        if nome_selecionado not in st.session_state["fila_global"]:
-            opcoes_acao.insert(0, "Entrar na Fila (Chegada Inicial)")
+        # Filtra as ações: se já está na fila da base, só pode dar Saída. Se está na rua, só pode dar Retorno.
+        if nome_selecionado in st.session_state["fila_global"]:
+            opcoes_acao = ["Saída para Entrega"]
+        else:
+            opcoes_acao = ["Entrar na Fila (Chegada Inicial)", "Retorno da Entrega"]
             
         opcao = st.radio("Ação:", opcoes_acao, horizontal=True, label_visibility="collapsed")
         
@@ -191,21 +190,22 @@ if eh_expedidor:
             if opcao == "Entrar na Fila (Chegada Inicial)":
                 if nome_selecionado not in st.session_state["fila_global"]:
                     st.session_state["fila_global"].append(nome_selecionado)
-                    st.toast(f"📥 {nome_selecionado} entrou na fila de base.")
+                    st.toast(f"📥 {nome_selecionado} iniciou o turno na base.")
                 salvar_historico = False
                 
             elif opcao == "Saída para Entrega":
                 if nome_selecionado in st.session_state["fila_global"]:
                     if st.session_state["fila_global"][0] != nome_selecionado:
-                        st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem!", icon="🚨")
+                        st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem da vez!", icon="🚨")
                     st.session_state["fila_global"].remove(nome_selecionado)
-                st.toast(f"🚀 {nome_selecionado} saiu para entrega!")
+                st.toast(f"🚀 {nome_selecionado} saiu para a rua. Nome removido da fila da base!")
                     
             elif opcao == "Retorno da Entrega":
+                # REGRA RÍGIDA: Só volta para a fila da base neste exato momento, indo direto para o final
                 if nome_selecionado in st.session_state["fila_global"]:
                     st.session_state["fila_global"].remove(nome_selecionado)
                 st.session_state["fila_global"].append(nome_selecionado)
-                st.toast(f"📥 {nome_selecionado} retornou para a base! Posição atualizada na fila.")
+                st.toast(f"📥 {nome_selecionado} retornou da rua e foi para o final da fila.")
 
             if salvar_historico:
                 novo_item = {
@@ -218,6 +218,7 @@ if eh_expedidor:
                 }
                 st.session_state["historico_global"].append(novo_item)
             
+            # Sincroniza com a nuvem
             banco["relatorio_entregas"] = st.session_state["historico_global"]
             banco["fila_espera"] = st.session_state["fila_global"]
             
