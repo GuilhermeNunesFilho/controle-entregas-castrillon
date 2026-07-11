@@ -71,7 +71,7 @@ if banco["fila_espera"]:
     card_styles = """
     <style>
     .fila-container { display: flex; flex-wrap: wrap; gap: 12px; padding: 10px 0; }
-    .entregador-card { display: flex; align-items: center; background-color: #f0f2f6; border-radius: 8px; padding: 6px 14px; border: 1px solid #dcdfe6; }
+    .entregador-card { display: flex; align-items: center; background-color: #f0f2f6; border-radius: 8px; padding: 6px 14px; border: 1px solid #dcdfe6; margin-bottom: 5px; }
     .badge-posicao { font-weight: bold; font-size: 13px; margin-right: 8px; color: #555; }
     .avatar-img { width: 32px; height: 32px; border-radius: 50%; margin-right: 8px; background-color: #fff; padding: 2px; }
     .nome-texto { font-weight: 600; color: #31333F; font-size: 14px; }
@@ -88,7 +88,7 @@ if banco["fila_espera"]:
         elif idx == 2:
             posicao = "🥉 3º"
         else:
-            posicao = f"{idx + 1}º"
+            posicao = f"🛵 {idx + 1}º"
             
         foto_url = FOTOS_ENTREGADORES.get(nome, "https://dicebear.com")
         html_fila += f"""
@@ -169,21 +169,24 @@ if eh_expedidor:
             hora_formatada = agora.strftime("%H:%M:%S")
             
             if opcao == "Retorno da Entrega":
+                # Entra no FINAL da fila se já não estiver nela
                 if nome_selecionado not in banco["fila_espera"]:
                     banco["fila_espera"].append(nome_selecionado)
-                    st.toast(f"📥 {nome_selecionado} entrou na fila!")
+                    st.toast(f"📥 {nome_selecionado} voltou da entrega e entrou no final da fila!")
                 else:
-                    st.toast(f"⚠️ {nome_selecionado} já está na fila!")
+                    st.toast(f"⚠️ {nome_selecionado} já está na fila de espera!")
                     
             elif opcao == "Saída para Entrega":
                 if nome_selecionado in banco["fila_espera"]:
+                    # Alerta se o expedidor estiver tirando alguém fora da vez (que não seja o 1º)
                     if banco["fila_espera"][0] != nome_selecionado:
-                        st.toast(f"⚠️ Atenção: {nome_selecionado} não era o primeiro da vez!", icon="🚨")
+                        st.toast(f"⚠️ Alerta: {nome_selecionado} saiu fora da ordem da vez!", icon="🚨")
                     banco["fila_espera"].remove(nome_selecionado)
                     st.toast(f"🚀 {nome_selecionado} saiu para entrega!")
                 else:
-                    st.toast(f"🚀 {nome_selecionado} saiu para entrega (fora da fila).")
+                    st.toast(f"🚀 {nome_selecionado} saiu para entrega (não estava na fila).")
 
+            # Salva no histórico do dia
             novo_item = {
                 "Data": agora.strftime("%d/%m/%Y"),
                 "Horário": hora_formatada,
